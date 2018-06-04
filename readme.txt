@@ -5,8 +5,8 @@ Tags: woocommerce Authorize.Net, Authorize.Net, payment gateway, woocommerce, wo
 Plugin URI: https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/
 Author URI: https://pledgedplugins.com
 Requires at least: 4.0, WooCommerce 3.0.0
-Tested up to: 4.9
-Stable tag: 4.0.0
+Tested up to: 5.0
+Stable tag: 4.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,12 @@ That's it! You are ready to accept credit cards with your Authorize.Net payment 
 
 
 == Changelog ==
+
+= 4.0.1 =
+
+* Added GDPR privacy support
+* Fixed false negative on SSL warning notice in admin
+* Added "minimum required" and "tested upto" headers for version check in WooCommerce 3.4
 
 = 4.0.0 =
 

@@ -114,9 +114,9 @@ class WC_Gateway_AuthNet extends WC_Payment_Gateway_CC {
 		}
 
 		// Show message if enabled and FORCE SSL is disabled and WordpressHTTPS plugin is not detected
-		if ( get_option( 'woocommerce_force_ssl_checkout' ) == 'no' && ! class_exists( 'WordPressHTTPS' ) ) {
-			echo '<div class="error"><p>' . sprintf( __( '%s is enabled, but the <a href="%s">force SSL option</a> is disabled; your checkout may not be secure! Please enable SSL and ensure your server has a valid SSL certificate.', 'wc-authnet' ), $this->method_title, admin_url( 'admin.php?page=wc-settings&tab=checkout' ) ) . '</p></div>';
-		}
+		if ( ! wc_checkout_is_https() ) {
+			echo '<div class="notice notice-warning"><p>' . sprintf( __( 'Authorize.Net is enabled, but a SSL certificate is not detected. Your checkout may not be secure! Please ensure your server has a valid <a href="%1$s" target="_blank">SSL certificate</a>', 'wc-authnet' ), 'https://en.wikipedia.org/wiki/Transport_Layer_Security' ) . '</p></div>';
+ 		}
 
 		if ( ! $this->currency_is_accepted() ) {
 			echo '<div class="error"><p>' . sprintf( __( 'Authorize.Net supports these currencies: %s', 'wc-authnet' ), implode( ', ', $this->currencies ) ) . '</p></div>';
@@ -129,7 +129,7 @@ class WC_Gateway_AuthNet extends WC_Payment_Gateway_CC {
 	 */
 	public function is_available() {
 		if ( $this->enabled == "yes" ) {
-			if ( ! $this->testmode && is_checkout() && ! is_ssl() ) {
+			if ( is_add_payment_method_page() && ! $this->saved_cards ) {
 				return false;
 			}
 			// Required fields check
@@ -141,7 +141,7 @@ class WC_Gateway_AuthNet extends WC_Payment_Gateway_CC {
 			}
 			return true;
 		}
-		return false;
+		return parent::is_available();
 	}
 
 	/**
