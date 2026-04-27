@@ -1,4 +1,4 @@
-=== Pledged Plugins Secure Gateway for Authorize.net and WooCommerce ===
+=== Secure Gateway for Authorize.net and WooCommerce by Pledged Plugins ===
 Contributors: mohsinoffline, freemius
 Donate link: https://wpgateways.com/support/send-payment/
 Tags: Authorize.net, payment gateway, woocommerce, pci, subscriptions
