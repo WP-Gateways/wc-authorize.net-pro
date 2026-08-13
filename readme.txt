@@ -1,4 +1,4 @@
-=== Pledged Plugins Secure Gateway for Authorize.net and WooCommerce ===
+=== Secure Gateway for Authorize.net and WooCommerce by Pledged Plugins ===
 Contributors: mohsinoffline, freemius
 Donate link: https://wpgateways.com/support/send-payment/
 Tags: Authorize.net, payment gateway, woocommerce, pci, subscriptions
@@ -7,7 +7,7 @@ Author URI: https://pledgedplugins.com
 Requires at least: 4.4
 Tested up to: 7.0
 Requires PHP: 5.6
-Stable tag: 6.1.26
+Stable tag: 6.1.27
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -78,6 +78,10 @@ You are in luck! The free version of the plugin has an option to use the AIM int
 A valid SSL certificate is required to ensure your customer credit card details are safe and make your site PCI DSS compliant. This plugin does not store the customer credit card numbers or sensitive information on your website.
 
 == Changelog ==
+
+= 6.1.27 =
+* Updated "WC tested up to" header to 11.0
+* Updated Freemius SDK to 2.13.4
 
 = 6.1.26 =
 * Updated compatibility info to WordPress 7.0

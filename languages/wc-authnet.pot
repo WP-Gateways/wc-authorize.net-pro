@@ -1,10 +1,10 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Pledged Plugins Secure Gateway for Authorize.net and "
-"WooCommerce\n"
-"POT-Creation-Date: 2026-04-07 20:38+0530\n"
-"PO-Revision-Date: 2026-04-07 20:37+0530\n"
+"Project-Id-Version: Secure Gateway for Authorize.net and WooCommerce by "
+"Pledged Plugins\n"
+"POT-Creation-Date: 2026-08-04 20:27+0530\n"
+"PO-Revision-Date: 2026-08-04 20:27+0530\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -944,7 +944,7 @@ msgid "Authnet payment method"
 msgstr ""
 
 #. Plugin Name of the plugin/theme
-msgid "Pledged Plugins Secure Gateway for Authorize.net and WooCommerce"
+msgid "Secure Gateway for Authorize.net and WooCommerce by Pledged Plugins"
 msgstr ""
 
 #. Plugin URI of the plugin/theme
