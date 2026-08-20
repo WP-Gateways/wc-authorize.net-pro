@@ -31,6 +31,10 @@ final class WC_Authnet_Blocks_Support extends AbstractPaymentMethodType {
 	 */
 	public function initialize() {
 		$this->settings = get_option( 'woocommerce_authnet_settings', [] );
+
+		// Hooks to manually enqueue the block CSS, as WooCommerce doesn't have an API for styles.
+		add_filter( 'render_block_woocommerce/checkout', [ $this, 'maybe_enqueue_blocks_style' ] );
+		add_filter( 'render_block_woocommerce/cart', [ $this, 'maybe_enqueue_blocks_style' ] );
 	}
 
 	/**
@@ -69,13 +73,6 @@ final class WC_Authnet_Blocks_Support extends AbstractPaymentMethodType {
 			$dependencies = array_merge( [ 'authnet-accept' ], $dependencies );
 		}
 
-		wp_enqueue_style(
-			'wc-authnet-blocks-checkout-style',
-			WC_AUTHNET_PLUGIN_URL . '/build/style-index.css',
-			[],
-			$version
-		);
-
 		wp_register_script(
 			'wc-authnet-blocks-integration',
 			WC_AUTHNET_PLUGIN_URL . '/build/index.js',
@@ -89,6 +86,44 @@ final class WC_Authnet_Blocks_Support extends AbstractPaymentMethodType {
 		);
 
 		return [ 'wc-authnet-blocks-integration' ];
+	}
+
+	/**
+	 * Enqueue the block stylesheet when the Cart or Checkout block renders AND
+	 * our blocks script has also been enqueued.
+	 *
+	 * Implemented to run as a filter callback for `render_block_woocommerce/cart`
+	 * and `render_block_woocommerce/checkout`, so the content MUST be returned as-is.
+	 *
+	 * @param string $content The rendered block content.
+	 *
+	 * @return string The unmodified block content.
+	 */
+	public function maybe_enqueue_blocks_style( $content ) {
+		$this->enqueue_blocks_style_if_script_enqueued();
+
+		return $content;
+	}
+
+	/**
+	 * Enqueues the blocks stylesheet if the block script has been enqueued.
+	 *
+	 * @return void
+	 */
+	private function enqueue_blocks_style_if_script_enqueued(): void {
+		// Check if our script handle has been enqueued. Note that wp_script_is()
+		// also checks dependencies and catches cases where the script will be
+		// enqueued as a dependency of another script.
+		if ( ! wp_script_is( 'wc-authnet-blocks-integration', 'enqueued' ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'wc-authnet-blocks-checkout-style',
+			WC_AUTHNET_PLUGIN_URL . '/build/style-index.css',
+			[],
+			WC_AUTHNET_VERSION
+		);
 	}
 
 	/**
