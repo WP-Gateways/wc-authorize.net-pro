@@ -5,9 +5,9 @@ Tags: Authorize.net, payment gateway, woocommerce, pci, subscriptions
 Plugin URI: https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/
 Author URI: https://pledgedplugins.com
 Requires at least: 4.4
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 5.6
-Stable tag: 6.1.27
+Stable tag: 6.1.28
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -78,6 +78,11 @@ You are in luck! The free version of the plugin has an option to use the AIM int
 A valid SSL certificate is required to ensure your customer credit card details are safe and make your site PCI DSS compliant. This plugin does not store the customer credit card numbers or sensitive information on your website.
 
 == Changelog ==
+
+= 6.1.28 =
+* Fixed blocks CSS loading on every page
+* Updated "WC tested up to" header to 11.1
+* Updated compatibility info to WordPress 7.1
 
 = 6.1.27 =
 * Updated "WC tested up to" header to 11.0

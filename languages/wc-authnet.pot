@@ -3,8 +3,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Secure Gateway for Authorize.net and WooCommerce by "
 "Pledged Plugins\n"
-"POT-Creation-Date: 2026-08-04 20:27+0530\n"
-"PO-Revision-Date: 2026-08-04 20:27+0530\n"
+"POT-Creation-Date: 2026-09-08 19:33+0530\n"
+"PO-Revision-Date: 2026-09-08 19:33+0530\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -488,7 +488,7 @@ msgid "Select the card types you want to allow payments from."
 msgstr ""
 
 #: includes/aim/class-wc-gateway-authnet.php:242
-#: includes/class-wc-authnet-blocks-support.php:174
+#: includes/class-wc-authnet-blocks-support.php:209
 #: includes/class-wc-gateway-authnet.php:267
 msgid "Visa"
 msgstr ""
@@ -504,13 +504,13 @@ msgid "Discover"
 msgstr ""
 
 #: includes/aim/class-wc-gateway-authnet.php:245
-#: includes/class-wc-authnet-blocks-support.php:186
+#: includes/class-wc-authnet-blocks-support.php:221
 #: includes/class-wc-gateway-authnet.php:270
 msgid "American Express"
 msgstr ""
 
 #: includes/aim/class-wc-gateway-authnet.php:246
-#: includes/class-wc-authnet-blocks-support.php:200
+#: includes/class-wc-authnet-blocks-support.php:235
 #: includes/class-wc-gateway-authnet.php:271
 msgid "JCB"
 msgstr ""
@@ -809,20 +809,20 @@ msgstr ""
 msgid "Unable to process request."
 msgstr ""
 
-#: includes/class-wc-authnet-blocks-support.php:161 src/index.js:30
+#: includes/class-wc-authnet-blocks-support.php:196 src/index.js:30
 msgid "Credit / Debit Card"
 msgstr ""
 
-#: includes/class-wc-authnet-blocks-support.php:180
+#: includes/class-wc-authnet-blocks-support.php:215
 msgid "Mastercard"
 msgstr ""
 
-#: includes/class-wc-authnet-blocks-support.php:194
+#: includes/class-wc-authnet-blocks-support.php:229
 msgctxt "Name of credit card"
 msgid "Discover"
 msgstr ""
 
-#: includes/class-wc-authnet-blocks-support.php:206
+#: includes/class-wc-authnet-blocks-support.php:241
 msgid "Diners"
 msgstr ""
 
