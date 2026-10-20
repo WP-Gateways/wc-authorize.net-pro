@@ -7,7 +7,7 @@ Author URI: https://pledgedplugins.com
 Requires at least: 4.4
 Tested up to: 7.1
 Requires PHP: 5.6
-Stable tag: 6.1.28
+Stable tag: 6.1.29
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -78,6 +78,10 @@ You are in luck! The free version of the plugin has an option to use the AIM int
 A valid SSL certificate is required to ensure your customer credit card details are safe and make your site PCI DSS compliant. This plugin does not store the customer credit card numbers or sensitive information on your website.
 
 == Changelog ==
+
+= 6.1.29 =
+* Updated "WC tested up to" header to 11.2
+* Updated Freemius SDK to 2.13.5
 
 = 6.1.28 =
 * Fixed blocks CSS loading on every page

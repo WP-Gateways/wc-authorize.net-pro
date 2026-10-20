@@ -1,6 +1,6 @@
 {
 	"name": "woo-authorize-net-gateway-aim",
-	"version": "6.1.28",
+	"version": "6.1.29",
 	"author": "Pledged Plugins",
 	"license": "GPL-3.0+",
 	"main": "build/index.js",
@@ -15,16 +15,16 @@
 		"postinstall": "composer install"
 	},
 	"dependencies": {
-		"@wordpress/hooks": "^4.53.0",
-		"@wordpress/i18n": "^6.26.0",
+		"@wordpress/hooks": "^4.57.0",
+		"@wordpress/i18n": "^6.30.0",
 		"react-payment-inputs": "^1.2.0",
-		"styled-components": "^6.1.15"
+		"styled-components": "^6.6.0"
 	},
 	"devDependencies": {
-		"@woocommerce/dependency-extraction-webpack-plugin": "^3.1.0",
-		"@woocommerce/eslint-plugin": "^2.3.0",
-		"@wordpress/prettier-config": "^4.53.0",
-		"@wordpress/scripts": "^34.1.0"
+		"@woocommerce/dependency-extraction-webpack-plugin": "^5.1.0",
+		"@woocommerce/eslint-plugin": "^4.0.0",
+		"@wordpress/prettier-config": "^4.57.0",
+		"@wordpress/scripts": "^36.1.0"
 	},
 	"files": [
 		"/assets",
