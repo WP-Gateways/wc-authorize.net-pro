@@ -1,0 +1,7 @@
+version: 1
+
+reviews:
+  ignore:
+    files:
+      - node_modules/
+      - vendor/

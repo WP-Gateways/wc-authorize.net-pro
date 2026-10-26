@@ -3,3 +3,4 @@
 /tests export-ignore
 /phpunit.xml export-ignore
 /jest.config.js export-ignore
+/cubic.yaml export-ignore
