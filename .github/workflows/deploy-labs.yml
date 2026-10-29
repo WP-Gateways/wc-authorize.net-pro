@@ -1,0 +1,14 @@
+name: Deploy to labs
+
+# Runs on every new commit on staging: a merged develop -> staging PR or a
+# direct merge. Deploys the plugin to labs.codebubble.com.
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  deploy:
+    uses: WP-Gateways/workflows/.github/workflows/deploy-labs.yml@main
+    with:
+      plugin-slug: woo-authorize-net-gateway-aim
+    secrets: inherit
