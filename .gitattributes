@@ -1,0 +1,4 @@
+# Keep repository-only files out of release zips (git archive).
+/.gitattributes export-ignore
+/tests export-ignore
+/phpunit.xml export-ignore
