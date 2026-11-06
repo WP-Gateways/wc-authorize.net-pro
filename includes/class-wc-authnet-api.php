@@ -188,17 +188,13 @@ class WC_Authnet_API {
 			'body' 	  => json_encode( $request_args ),
 		);
 		$response = wp_remote_post( $request_url, $args );
-
-		if( ! is_wp_error( $response ) ) {
-			$response = preg_replace( '/[\x00-\x1F\x80-\xFF]/', '', wp_remote_retrieve_body( $response ) );
-			$result   = json_decode( wc_clean( wp_unslash( $response ) ), true );
+		if ( ! is_wp_error( $response ) ) {
+			// Authorize.net starts its JSON with a byte-order mark, which json_decode() rejects.
+			$body   = preg_replace( '/^\xEF\xBB\xBF/', '', wp_remote_retrieve_body( $response ) );
+			$result = json_decode( $body, true );
+			$result = is_array( $result ) ? self::clean_response( $result ) : null;
 		} else {
 			$result = $response;
-		}
-
-		if( empty( $result ) ) {
-			self::log( "Empty Response. Trying without the wp_unslash." );
-			$result   = json_decode( wc_clean( $response ), true );
 		}
 
 		$gateway_debug = ( self::is_logging() && self::is_debugging() );
@@ -230,6 +226,24 @@ class WC_Authnet_API {
 
 		return $result;
 
+	}
+
+	/**
+	 * Sanitises the strings in a decoded response, keeping other value types.
+	 *
+	 * @param array $response Decoded response.
+	 * @return array
+	 */
+	private static function clean_response( array $response ) {
+		foreach ( $response as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$response[ $key ] = self::clean_response( $value );
+			} elseif ( is_string( $value ) ) {
+				$response[ $key ] = wc_clean( $value );
+			}
+		}
+
+		return $response;
 	}
 
 	/**
