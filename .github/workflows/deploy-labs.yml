@@ -1,14 +1,86 @@
 name: Deploy to labs
 
 # Runs on every new commit on staging: a merged develop -> staging PR or a
-# direct merge. Deploys the plugin to labs.codebubble.com.
+# direct merge. Builds the plugin and rsyncs it to labs.codebubble.com.
+#
+# This repo is public, so it can't call the private WP-Gateways/workflows
+# reusable workflow. These steps are copied from it, with the server details
+# in repository secrets so they stay out of this file and the run logs.
 on:
   push:
     branches: [staging]
 
+permissions:
+  contents: read
+
+env:
+  PLUGIN_SLUG: woo-authorize-net-gateway-aim
+  LABS_HOST: ${{ secrets.LABS_HOST }}
+  LABS_PORT: ${{ secrets.LABS_PORT }}
+  LABS_USER: ${{ secrets.LABS_USER }}
+  LABS_PLUGINS_DIR: ${{ secrets.LABS_PLUGINS_DIR }}
+  LABS_KNOWN_HOSTS: ${{ secrets.LABS_KNOWN_HOSTS }}
+
 jobs:
   deploy:
-    uses: WP-Gateways/workflows/.github/workflows/deploy-labs.yml@main
-    with:
-      plugin-slug: woo-authorize-net-gateway-aim
-    secrets: inherit
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-labs
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20
+
+      - name: Build JS assets
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm run build
+
+      - name: Install production Composer packages
+        if: hashFiles('composer.json') != ''
+        run: |
+          # Only ship vendor/ when the plugin has runtime (non-dev) packages.
+          if php -r '$c = json_decode(file_get_contents("composer.json"), true); foreach (array_keys($c["require"] ?? []) as $p) { if ($p !== "php" && strpos($p, "ext-") !== 0) exit(0); } exit(1);'; then
+            composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+          else
+            echo "No runtime Composer packages, removing vendor/ if present."
+            rm -rf vendor
+          fi
+
+      - name: Configure SSH
+        env:
+          LABS_SSH_KEY: ${{ secrets.LABS_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$LABS_SSH_KEY" > ~/.ssh/labs_key
+          chmod 600 ~/.ssh/labs_key
+          printf '%s\n' "$LABS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Rsync to labs
+        run: |
+          excludes=(
+            --exclude=.git --exclude=.github --exclude=.gitignore --exclude=.gitattributes
+            --exclude=.distignore --exclude=.editorconfig --exclude=node_modules --exclude=tests
+            --exclude=phpunit.xml --exclude=phpunit.xml.dist --exclude=.phpunit.result.cache
+            --exclude=jest.config.js --exclude=cubic.yaml --exclude=CLAUDE.md --exclude=AGENTS.md
+            --exclude=package-lock.json --exclude='*.zip'
+          )
+          # A repo can list more paths to leave out in .distignore.
+          [ -f .distignore ] && excludes+=(--exclude-from=.distignore)
+          flags=(-rlz --checksum --delete --delete-excluded --itemize-changes --chmod=D755,F644)
+
+          ssh_cmd="ssh -p $LABS_PORT -i $HOME/.ssh/labs_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          $ssh_cmd "$LABS_USER@$LABS_HOST" "mkdir -p '$LABS_PLUGINS_DIR/$PLUGIN_SLUG'"
+          rsync "${flags[@]}" "${excludes[@]}" -e "$ssh_cmd" ./ "$LABS_USER@$LABS_HOST:$LABS_PLUGINS_DIR/$PLUGIN_SLUG/"
+
+      - name: Summary
+        run: |
+          echo "Deployed \`${GITHUB_REPOSITORY}@${GITHUB_SHA::7}\` to labs.codebubble.com." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/labs_key
