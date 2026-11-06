@@ -142,6 +142,15 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 			return;
 		}
 
+		// Without a Public Client Key, Accept.js doesn't tokenize at checkout and the details reach this server.
+		if ( ! $this->client_key ) {
+			echo '<div class="notice notice-warning"><p>' . sprintf(
+				/* translators: %s: URL of the Authorize.net card settings. */
+				__( 'Authorize.net has no Public Client Key, so card numbers and CVV codes are sent to your server instead of being tokenized by Authorize.net in the browser. This widens your PCI compliance scope. <a href="%s">Set your Public Client Key</a>.', 'wc-authnet' ),
+				esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=authnet' ) )
+			) . '</p></div>';
+		}
+
 		// Show message if enabled and FORCE SSL is disabled and WordpressHTTPS plugin is not detected
 		if ( ! wc_checkout_is_https() ) {
 			echo '<div class="notice notice-warning"><p>' . sprintf( __( 'Authorize.net is enabled, but an SSL certificate is not detected. Your checkout may not be secure! Please ensure your server has a valid <a href="%1$s" target="_blank">SSL certificate</a>', 'wc-authnet' ), 'https://en.wikipedia.org/wiki/Transport_Layer_Security' ) . '</p></div>';
