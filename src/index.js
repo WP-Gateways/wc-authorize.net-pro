@@ -111,7 +111,7 @@ const CreditCardComponent = ( {
 	return (
 		<>
 			{ renderedCardElement }
-			{ PaymentMethodIcons && cardIcons.length && (
+			{ PaymentMethodIcons && cardIcons.length > 0 && (
 				<PaymentMethodIcons icons={ cardIcons } align="left" />
 			) }
 		</>
