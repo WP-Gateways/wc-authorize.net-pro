@@ -153,14 +153,22 @@ class WC_Authnet_API {
 		if ( ! self::$statement_descriptor ) {
 			$options = get_option( 'woocommerce_authnet_settings' );
 
-			if ( isset( $options['statement_descriptor'] ) ) {
-				self::set_statement_descriptor( $options['statement_descriptor'] );
-			} else {
-				self::set_statement_descriptor( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
-			}
+			self::set_statement_descriptor( self::descriptor_or_site_name( isset( $options['statement_descriptor'] ) ? $options['statement_descriptor'] : '' ) );
 		}
 
 		return self::$statement_descriptor;
+	}
+
+	/**
+	 * The Statement Descriptor setting, or the site name when it is empty.
+	 *
+	 * @param string|null $descriptor Setting value.
+	 * @return string
+	 */
+	public static function descriptor_or_site_name( $descriptor ) {
+		$descriptor = trim( (string) $descriptor );
+
+		return '' !== $descriptor ? $descriptor : wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 	}
 
 	public static function execute( $request_method, $payment_args = array() ) {

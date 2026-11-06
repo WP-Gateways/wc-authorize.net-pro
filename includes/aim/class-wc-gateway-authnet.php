@@ -53,7 +53,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 		$this->testmode    		  		= $this->get_option( 'testmode' ) === 'yes';
 		$this->capture     		  		= $this->get_option( 'capture', 'yes' ) === 'yes';
 		$this->capture_on_status_change	= $this->get_option( 'capture_on_status_change', 'yes' ) === 'yes';
-		$this->statement_descriptor 	= $this->get_option( 'statement_descriptor', wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+		$this->statement_descriptor 	= WC_Authnet_API::descriptor_or_site_name( $this->get_option( 'statement_descriptor' ) );
 		$this->login_id	   		  		= $this->get_option( 'login_id' );
 		$this->transaction_key	  		= $this->get_option( 'transaction_key' );
 		$this->logging     		  		= $this->get_option( 'logging' ) === 'yes';
