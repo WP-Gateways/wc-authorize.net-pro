@@ -29,6 +29,14 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 	const  ACCEPT_JS_URL_TEST = 'https://jstest.authorize.net/v1/Accept.js';
 
 	/**
+	 * Token fields posted by the WooCommerce Apple Pay and Google Pay extension, and their opaque data descriptors.
+	 */
+	const WALLET_DESCRIPTORS = array(
+		'wcapgp_google_pay_payment_data' => 'COMMON.GOOGLE.INAPP.PAYMENT',
+		'wcapgp_apple_pay_payment_data'  => 'COMMON.APPLE.INAPP.PAYMENT',
+	);
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -528,23 +536,47 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 
 		WC_Authnet_API::log( "Info: Getting payment source with new card details." );
 
+		// Not saving token, so don't define customer either.
+		$authnet_source = $this->get_posted_source_args();
+
+		return (object) array(
+			'token_id' => $token_id,
+			'customer' => ( $authnet_customer ? $authnet_customer->get_id() : false ),
+			'source'   => $authnet_source,
+		);
+	}
+
+	/**
+	 * Get the new payment details posted: an Accept.js nonce, card fields, or an Apple Pay / Google Pay token.
+	 *
+	 * @param bool $allow_wallets Whether Apple Pay / Google Pay tokens are accepted.
+	 *
+	 * @throws Exception For a card type that is not allowed or a missing CVC code.
+	 * @return array|false The details with their 'source_type', or false if none were posted.
+	 */
+	protected function get_posted_source_args( $allow_wallets = true ) {
+
 		// New CC info was entered and we have a new token to process
 		if ( isset( $_POST['authnet_nonce'] ) && isset( $_POST['authnet_data_descriptor'] ) ) {
-			$authnet_source_args = array(
-				'nonce'      => wc_clean( $_POST['authnet_nonce'] ),
-				'descriptor' => wc_clean( $_POST['authnet_data_descriptor'] ),
+			return array(
+				'nonce'       => wc_clean( $_POST['authnet_nonce'] ),
+				'descriptor'  => wc_clean( $_POST['authnet_data_descriptor'] ),
+				'source_type' => 'nonce',
 			);
-			$new_source          = $authnet_source_args['source_type'] = 'nonce';
-		} elseif ( isset( $_POST['authnet-card-number'] ) && ! empty( $_POST['authnet-card-number'] ) && isset( $_POST['authnet-card-expiry'] ) && isset( $_POST['authnet-card-cvc'] ) ) {
+		}
+
+		if ( ! empty( $_POST['authnet-card-number'] ) && isset( $_POST['authnet-card-expiry'] ) && isset( $_POST['authnet-card-cvc'] ) ) {
 			$authnet_source_args = array(
 				'card_number' => str_replace( ' ', '', wc_clean( $_POST['authnet-card-number'] ) ),
 				'expiry'      => wc_clean( $_POST['authnet-card-expiry'] ),
 				'cvc'         => wc_clean( $_POST['authnet-card-cvc'] ),
+				'source_type' => 'card',
 			);
+			$card_type = $this->get_card_type( $authnet_source_args['card_number'], 'pattern', 'name' );
 
 			// Check for card type supported or not
-			if ( ! in_array( $this->get_card_type( $authnet_source_args['card_number'], 'pattern', 'name' ), $this->allowed_card_types ) ) {
-				WC_Authnet_API::log( sprintf( __( 'Card type being used is not one of supported types in plugin settings: %s', 'wc-authnet' ), $this->get_card_type( $authnet_source_args['card_number'], 'pattern', 'name' ) ) );
+			if ( ! in_array( $card_type, $this->allowed_card_types ) ) {
+				WC_Authnet_API::log( sprintf( __( 'Card type being used is not one of supported types in plugin settings: %s', 'wc-authnet' ), $card_type ) );
 				WC_Authnet_API::log( "Error: Card Type Not Accepted." );
 				throw new Exception( __( 'Card Type Not Accepted.', 'wc-authnet' ) );
 			}
@@ -553,31 +585,23 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 				throw new Exception( __( 'CVC code is required.', 'wc-authnet' ) );
 			}
 
-			$new_source = $authnet_source_args['source_type'] = 'card';
-		} elseif( isset( $_POST['wcapgp_google_pay_payment_data'] ) ) {
-			$authnet_source_args = array(
-				'nonce' 	 => wc_clean( $_POST['wcapgp_google_pay_payment_data'] ),
-				'descriptor' => 'COMMON.GOOGLE.INAPP.PAYMENT',
-			);
-			$new_source = $authnet_source_args['source_type'] = 'nonce';
-		} elseif( isset( $_POST['wcapgp_apple_pay_payment_data'] ) ) {
-			$authnet_source_args = array(
-				'nonce' 	 => wc_clean( $_POST['wcapgp_apple_pay_payment_data'] ),
-				'descriptor' => 'COMMON.APPLE.INAPP.PAYMENT',
-			);
-			$new_source = $authnet_source_args['source_type'] = 'nonce';
+			return $authnet_source_args;
 		}
 
-		if ( isset( $new_source ) ) {
-			// Not saving token, so don't define customer either.
-			$authnet_source = $authnet_source_args;
+		// Token from the WooCommerce Apple Pay and Google Pay extension
+		if ( $allow_wallets ) {
+			foreach ( self::WALLET_DESCRIPTORS as $field => $descriptor ) {
+				if ( isset( $_POST[ $field ] ) ) {
+					return array(
+						'nonce'       => wc_clean( $_POST[ $field ] ),
+						'descriptor'  => $descriptor,
+						'source_type' => 'nonce',
+					);
+				}
+			}
 		}
 
-		return (object) array(
-			'token_id' => $token_id,
-			'customer' => ( $authnet_customer ? $authnet_customer->get_id() : false ),
-			'source'   => $authnet_source,
-		);
+		return false;
 	}
 
 	/**
