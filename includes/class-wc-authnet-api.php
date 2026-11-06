@@ -205,7 +205,7 @@ class WC_Authnet_API {
 
 		// Saving to Log here
 		if ( $gateway_debug ) {
-			$message = sprintf( "\nPosting to: \n%s\nRequest: \n%s\nResponse: \n%s", $request_url, print_r( $request_args, 1 ), print_r( $result, 1 ) );
+			$message = sprintf( "\nPosting to: \n%s\nRequest: \n%s\nResponse: \n%s", $request_url, print_r( self::redact( $request_args ), 1 ), print_r( self::redact( $result ), 1 ) );
 			self::log( $message );
 		}
 
@@ -230,6 +230,34 @@ class WC_Authnet_API {
 
 		return $result;
 
+	}
+
+	/**
+	 * Masks secrets and payment details in a request or response before it is logged.
+	 *
+	 * The API key, CVV codes and opaque data (Accept.js nonces, Apple Pay / Google Pay tokens) are
+	 * replaced; card, bank account and routing numbers keep their last four digits. Also covers the
+	 * legacy AIM field names (x_tran_key, x_card_num, x_card_code).
+	 *
+	 * @param mixed $data Request or response.
+	 * @return mixed
+	 */
+	public static function redact( $data ) {
+		if ( ! is_array( $data ) ) {
+			return $data;
+		}
+
+		foreach ( $data as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$data[ $key ] = self::redact( $value );
+			} elseif ( in_array( $key, array( 'transactionKey', 'cardCode', 'dataValue', 'x_tran_key', 'x_card_code' ), true ) ) {
+				$data[ $key ] = '[redacted]';
+			} elseif ( in_array( $key, array( 'cardNumber', 'accountNumber', 'routingNumber', 'x_card_num' ), true ) && is_scalar( $value ) ) {
+				$data[ $key ] = 'XXXX' . substr( (string) $value, -4 );
+			}
+		}
+
+		return $data;
 	}
 
 	/**

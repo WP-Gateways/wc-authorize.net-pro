@@ -222,7 +222,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 				'title'       => __( 'Gateway Debug', 'wc-authnet' ),
 				'label'       => __( 'Log gateway requests and response to the WooCommerce System Status log.', 'wc-authnet' ),
 				'type'        => 'checkbox',
-				'description' => __( '<strong>CAUTION! Enabling this option will write gateway requests possibly including card numbers and CVV to the logs.</strong> Do not turn this on unless you have a problem processing credit cards. You must only ever enable it temporarily for troubleshooting or to send requested information to the plugin author. It must be disabled straight away after the issues are resolved and the plugin logs should be deleted.', 'wc-authnet' ) . ' ' . sprintf( __( '<a target="_blank" href="%s">Click here</a> to check and delete the full log file.', 'wc-authnet' ), esc_url( self::get_log_url() ) ),
+				'description' => __( '<strong>CAUTION! Enabling this option writes gateway requests and responses, including customer names, emails and addresses, to the logs.</strong> API keys, CVV codes and payment tokens are removed, and card and account numbers are masked. Do not turn this on unless you have a problem processing credit cards. You must only ever enable it temporarily for troubleshooting or to send requested information to the plugin author. It must be disabled straight away after the issues are resolved and the plugin logs should be deleted.', 'wc-authnet' ) . ' ' . sprintf( __( '<a target="_blank" href="%s">Click here</a> to check and delete the full log file.', 'wc-authnet' ), esc_url( self::get_log_url() ) ),
 				'default'     => 'no',
 			),
 			'line_items' 				=> array(
@@ -581,7 +581,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 
         // Saving to Log here
 		if ( $this->logging && $this->debugging ) {
-			$message = sprintf( "\nPosting to: \n%s\nRequest: \n%s\nLine Items: \n%s\nResponse: \n%s", $endpoint_url, print_r( $_x_post_fields, 1 ), print_r( $args['line_items'], 1 ), print_r( $result, 1 ) );
+			$message = sprintf( "\nPosting to: \n%s\nRequest: \n%s\nLine Items: \n%s\nResponse: \n%s", $endpoint_url, print_r( WC_Authnet_API::redact( $_x_post_fields ), 1 ), print_r( $args['line_items'], 1 ), print_r( $result, 1 ) );
 			WC_Authnet_Logger::log( $message );
 		}
 
