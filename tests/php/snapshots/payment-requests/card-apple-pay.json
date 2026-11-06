@@ -1,0 +1,75 @@
+{
+    "refId": 60,
+    "transactionRequest": {
+        "transactionType": "authCaptureTransaction",
+        "amount": "25.00",
+        "currencyCode": "USD",
+        "payment": {
+            "opaqueData": {
+                "dataDescriptor": "COMMON.APPLE.INAPP.PAYMENT",
+                "dataValue": "apple-token"
+            }
+        },
+        "order": {
+            "invoiceNumber": "60",
+            "description": "Shop - Order 60"
+        },
+        "lineItems": [],
+        "tax": {
+            "amount": "2.00"
+        },
+        "shipping": {
+            "amount": "5.00"
+        },
+        "customer": {
+            "id": 5,
+            "email": "jane@example.com"
+        },
+        "billTo": {
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "company": "Doe & Co",
+            "address": "1 Main St Suite 2",
+            "city": "Springfield",
+            "state": "IL",
+            "zip": "62701",
+            "country": "US",
+            "phoneNumber": "555-0100"
+        },
+        "shipTo": {
+            "firstName": "John",
+            "lastName": "Doe",
+            "company": "",
+            "address": "2 Oak Ave",
+            "city": "Chicago",
+            "state": "IL",
+            "zip": "60601",
+            "country": "US"
+        },
+        "customerIP": "127.0.0.1",
+        "transactionSettings": {
+            "setting": [
+                {
+                    "settingName": "duplicateWindow",
+                    "settingValue": "60"
+                },
+                {
+                    "settingName": "emailCustomer",
+                    "settingValue": false
+                }
+            ]
+        },
+        "userFields": {
+            "userField": [
+                {
+                    "name": "Customer Name",
+                    "value": "Jane Doe"
+                },
+                {
+                    "name": "Customer Email",
+                    "value": "jane@example.com"
+                }
+            ]
+        }
+    }
+}

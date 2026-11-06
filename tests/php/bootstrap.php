@@ -49,5 +49,6 @@ require_once __DIR__ . '/stubs/plugin.php';
 
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-gateway-authnet-logger.php';
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-authnet-api.php';
+require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-authnet-address.php';
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-gateway-authnet.php';
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-authnet-blocks-support.php';

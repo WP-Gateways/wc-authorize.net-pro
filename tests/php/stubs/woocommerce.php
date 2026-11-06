@@ -303,6 +303,10 @@ class WC_Payment_Tokens {
 		}
 	}
 
+	public static function get_tokens( $args ) {
+		return self::get_customer_tokens( $args['user_id'], $args['gateway_id'] ?? '' );
+	}
+
 	public static function get_customer_tokens( $customer_id, $gateway_id = '' ) {
 		return array_filter(
 			self::$tokens,
@@ -344,6 +348,13 @@ class WC_Authnet_Test_Order {
 
 	public $saved = 0;
 
+	/**
+	 * Getter values, e.g. 'get_billing_city' => 'Springfield'.
+	 *
+	 * @var array
+	 */
+	public $props = array();
+
 	public function __construct( $id = 1, array $values = array() ) {
 		$this->id = $id;
 		foreach ( $values as $name => $value ) {
@@ -378,6 +389,10 @@ class WC_Authnet_Test_Order {
 
 	public function get_payment_method() {
 		return $this->payment_method;
+	}
+
+	public function set_payment_method( $payment_method ) {
+		$this->payment_method = $payment_method;
 	}
 
 	public function get_total() {
@@ -416,10 +431,13 @@ class WC_Authnet_Test_Order {
 	}
 
 	/**
-	 * Other getters (billing and shipping fields, currency, ...) return '', and setters and actions such as
-	 * payment_complete() do nothing, so requests can be built from the order.
+	 * Other getters (billing and shipping fields, currency, ...) return their value in $props, or '', and
+	 * setters and actions such as payment_complete() do nothing, so requests can be built from the order.
 	 */
 	public function __call( $name, $arguments ) {
+		if ( array_key_exists( $name, $this->props ) ) {
+			return $this->props[ $name ];
+		}
 		return 0 === strpos( $name, 'get_' ) ? '' : null;
 	}
 }

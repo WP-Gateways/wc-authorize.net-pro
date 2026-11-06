@@ -226,6 +226,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 			if ( ! class_exists( 'WC_Authnet_API' ) ) {
 				include_once( dirname( __FILE__ ) . '/includes/class-wc-authnet-api.php' );
 			}
+			require_once( dirname( __FILE__ ) . '/includes/class-wc-authnet-address.php' );
 
 			// Init the gateway itself
 			$this->init_gateways();
