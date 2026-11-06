@@ -115,6 +115,26 @@ class PostedPaymentDetailsTest extends TestCase {
 	}
 
 	/**
+	 * Wallet extension versions without the processor integration post the whole checkout form, card form
+	 * included, with the wallet as the payment method.
+	 *
+	 * @dataProvider plans
+	 */
+	public function test_the_wallet_token_wins_when_the_wallet_is_the_payment_method( $enterprise ) {
+		\WC_Authnet_Test_Freemius::$enterprise = $enterprise;
+		$_POST['payment_method']                 = 'wcapgp_google_pay';
+		$_POST['authnet_nonce']                  = 'nonce';
+		$_POST['authnet_data_descriptor']        = 'COMMON.ACCEPT.INAPP.PAYMENT';
+		$_POST['wcapgp_google_pay_payment_data'] = 'google-token';
+		$this->post_card();
+
+		$this->assertEquals(
+			array( 'nonce' => 'google-token', 'descriptor' => 'COMMON.GOOGLE.INAPP.PAYMENT', 'source_type' => 'nonce' ),
+			$this->source()->source
+		);
+	}
+
+	/**
 	 * @dataProvider plans
 	 */
 	public function test_nothing_posted_gives_no_source( $enterprise ) {

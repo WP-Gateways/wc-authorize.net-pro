@@ -557,6 +557,16 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 			);
 		}
 
+		// The same, from extension versions that post the checkout form (card form included) with the wallet as the payment method
+		$wallet_field = isset( $_POST['payment_method'] ) ? wc_clean( $_POST['payment_method'] ) . '_payment_data' : '';
+		if ( $allow_wallets && isset( self::WALLET_DESCRIPTORS[ $wallet_field ], $_POST[ $wallet_field ] ) ) {
+			return array(
+				'nonce'       => wc_clean( $_POST[ $wallet_field ] ),
+				'descriptor'  => self::WALLET_DESCRIPTORS[ $wallet_field ],
+				'source_type' => 'nonce',
+			);
+		}
+
 		// New CC info was entered and we have a new token to process
 		if ( isset( $_POST['authnet_nonce'] ) && isset( $_POST['authnet_data_descriptor'] ) ) {
 			return array(
