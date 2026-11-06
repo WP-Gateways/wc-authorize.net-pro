@@ -1,5 +1,18 @@
 import { useEffect, useCallback, useState } from '@wordpress/element';
-import {authnetDispatch, getClientKey} from "./utils";
+import { __ } from '@wordpress/i18n';
+import { authnetDispatch, getClientKey } from './utils';
+import { acceptErrorMessage } from './accept';
+
+/**
+ * Month and two-digit year from an expiry entered as "MM / YY" or "MM / YYYY".
+ *
+ * @param {string} expiryDate Expiry date.
+ * @return {{month: string, year: string}} Expiry parts.
+ */
+const parseExpiry = ( expiryDate ) => {
+	const [ month = '', year = '' ] = expiryDate.split( '/' ).map( ( part ) => part.trim() );
+	return { month, year: year.slice( -2 ) };
+};
 
 export const usePaymentProcessing = (
 	billing,
@@ -11,89 +24,47 @@ export const usePaymentProcessing = (
 	onPaymentSetup,
 	onCheckoutFail
 ) => {
-
 	const [ error, setError ] = useState( '' );
 	const onAuthnetError = useCallback( ( message ) => {
-		console.log( message );
 		setError( message );
 		return message ? message : false;
 	}, [] );
 
-	const [effectTrigger, setEffectTrigger] = useState(0);
-	// hook into and register callbacks for events
+	// Hook into and register callbacks for events.
 	useEffect( () => {
-	//console.log("🚀 ~ file: payment-processing.js:22 ~ useEffect ~ useEffect:", effectTrigger)
-
-	setEffectTrigger(effectTrigger+1);
-
-		const createToken = async ( paymentData ) => {
-			return await authnetDispatch( paymentData );
-		};
 		const onSubmit = async () => {
+			const billingAddress = billing.billingAddress;
+
+			// Report a card field error first.
+			if ( error ) {
+				return {
+					type: emitResponse.responseTypes.ERROR,
+					message: error,
+				};
+			}
+
 			try {
-				const billingAddress = billing.billingAddress;
+				let authnetArgs;
 
-				// if there's an error return that.
-				if ( error ) {
-					console.log('returning', error);
-					return {
-						type: emitResponse.responseTypes.ERROR,
-						message: error,
-					};
-				}
-
-				let authnetArgs = {};
-
-				if( getClientKey() ) {
-					const extractDate = ( expiryDate ) => {
-						let splitDate = expiryDate.split('/');
-
-						let data = [];
-						for(var i in splitDate){
-							if( ! data?.month ) {
-								data.month = splitDate[i].trim();
-							} else {
-								data.year = splitDate[i].trim();
-							}
-						}
-						console.log('date', data);
-						return data;
-					};
-
-					const expires = extractDate( expiryDate );
-
-					const paymentData = {
+				if ( getClientKey() ) {
+					const { month, year } = parseExpiry( expiryDate );
+					const response = await authnetDispatch( {
 						cardNumber: cardNumber.replace( /\s/g, '' ),
 						cardCode: cvc,
-						month: expires?.month.toString(),
-						year: expires?.year.toString().slice( -2 ),
+						month,
+						year,
 						fullName: billingAddress?.first_name + ' ' + billingAddress?.last_name,
-					};
-
-					const response = await createToken( paymentData );
-					console.log(response);
-					if ( response?.messages?.resultCode === "Error" ) {
-						var i = 0;
-						while ( i < response.messages.message.length ) {
-							//console.log( response.messages.message[i].code + ": " + response.messages.message[i].text );
-							return {
-								type: emitResponse.responseTypes.ERROR,
-								message: response.messages.message[i].text,
-							};
-							i = i + 1;
-						}
-
-					}
+					} );
 
 					authnetArgs = {
 						authnet_nonce: response?.opaqueData?.dataValue,
-						authnet_data_descriptor: response?.opaqueData?.dataDescriptor
+						authnet_data_descriptor: response?.opaqueData?.dataDescriptor,
 					};
 				} else {
 					authnetArgs = {
 						'authnet-card-number': cardNumber,
 						'authnet-card-expiry': expiryDate,
-						'authnet-card-cvc': cvc
+						'authnet-card-cvc': cvc,
 					};
 				}
 
@@ -112,25 +83,10 @@ export const usePaymentProcessing = (
 					},
 				};
 			} catch ( e ) {
-				console.log('catch', e);
-				if ( e?.messages?.resultCode === "Error" ) {
-					var i = 0;
-					while ( i < e.messages.message.length ) {
-						console.log( e.messages.message[i].code + ": " + e.messages.message[i].text );
-						return {
-							type: emitResponse.responseTypes.ERROR,
-							message: e.messages.message[i].text,
-						};
-						i = i + 1;
-					}
-
-				} else {
-					return {
-						type: emitResponse.responseTypes.ERROR,
-						message: e,
-					};
-				}
-
+				return {
+					type: emitResponse.responseTypes.ERROR,
+					message: acceptErrorMessage( e, __( 'There was a problem with your card details. Please try again.', 'wc-authnet' ) ),
+				};
 			}
 		};
 		const unsubscribeProcessing = onPaymentSetup( onSubmit );
@@ -140,9 +96,11 @@ export const usePaymentProcessing = (
 	}, [
 		onPaymentSetup,
 		billing.billingAddress,
-		onAuthnetError,
+		cardNumber,
+		expiryDate,
+		cvc,
+		PAYMENT_METHOD_NAME,
 		error,
-		emitResponse.noticeContexts.PAYMENTS,
 		emitResponse.responseTypes.ERROR,
 		emitResponse.responseTypes.SUCCESS,
 	] );
@@ -160,9 +118,7 @@ export const usePaymentProcessing = (
 			// so we don't break the observers.
 			return true;
 		};
-		const unsubscribeAfterProcessing = onCheckoutFail(
-			onError
-		);
+		const unsubscribeAfterProcessing = onCheckoutFail( onError );
 		return () => {
 			unsubscribeAfterProcessing();
 		};
