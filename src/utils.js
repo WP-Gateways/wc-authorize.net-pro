@@ -1,4 +1,5 @@
-import {getSetting} from '@woocommerce/settings';
+import { getSetting } from '@woocommerce/settings';
+import { dispatchAcceptData } from './accept';
 
 export const getBlocksConfiguration = () => {
 	const authnetServerData = getSetting( 'authnet_data', null );
@@ -24,27 +25,11 @@ export const getClientKey = () => {
 	return getBlocksConfiguration()?.client_key;
 };
 
-export const authnetDispatch = async ( paymentData ) => {
-
-	const secureData = {
+export const authnetDispatch = ( cardData ) =>
+	dispatchAcceptData( {
 		authData: {
 			apiLoginID: getLoginID(),
-			clientKey: getClientKey()
+			clientKey: getClientKey(),
 		},
-		cardData: paymentData
-	};
-
-	return new Promise((resolve, reject) => {
-		if (window) {
-			window.Accept.dispatchData(
-				secureData,
-				(response) => {
-					if (response.messages.resultCode === 'Ok') {
-						resolve(response);
-					}
-					reject(response);
-				}
-			);
-		}
-	});
-};
+		cardData,
+	} );

@@ -1,9 +1,8 @@
 import { registerPaymentMethod } from '@woocommerce/blocks-registry';
 import { __ } from '@wordpress/i18n';
-import { css } from 'styled-components';
 import { PaymentInputsWrapper, usePaymentInputs } from 'react-payment-inputs';
 import images from 'react-payment-inputs/images';
-import { useEffect, useState } from '@wordpress/element';
+import { useState } from '@wordpress/element';
 import { getBlocksConfiguration } from './utils';
 import { usePaymentProcessing } from './payment-processing';
 import './style.scss';
@@ -57,8 +56,6 @@ const CreditCardComponent = ( {
 	);
 
 	const onCCError = ( error, erroredInputs ) => {
-		//console.log(error);
-		//console.log(erroredInputs);
 		setCCError(error);
 		onAuthnetError(error);
 		return true;
@@ -68,7 +65,6 @@ const CreditCardComponent = ( {
 		if(getBlocksConfiguration()?.allowed_card_types.indexOf(cardType.type) >= 0) {
 			return;
 		}
-		//console.log(cardType.type, getBlocksConfiguration()?.allowed_card_types);
 		if(cardType.type === 'dinersclub' && getBlocksConfiguration()?.allowed_card_types.indexOf('diners-club') >= 0) {
 			return;
 		}
@@ -111,26 +107,18 @@ const CreditCardComponent = ( {
 	return (
 		<>
 			{ renderedCardElement }
-			{ PaymentMethodIcons && cardIcons.length && (
+			{ PaymentMethodIcons && cardIcons.length > 0 && (
 				<PaymentMethodIcons icons={ cardIcons } align="left" />
 			) }
 		</>
 	);
 };
 
-function AuthnetCreditCard ( props ) {
-	const { authnet } = props;
-
-	return (
-		<CreditCardComponent { ...props } />
-	);
-}
-
 const authnetCcPaymentMethod = {
 	name: PAYMENT_METHOD_NAME,
 	label: <Label />,
-	content: <AuthnetCreditCard />,
-	edit: <AuthnetCreditCard />,
+	content: <CreditCardComponent />,
+	edit: <CreditCardComponent />,
 	canMakePayment: () => true,
 	ariaLabel: __(
 		'Authnet payment method',

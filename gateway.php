@@ -2,13 +2,15 @@
 /*
 Plugin Name: Secure Gateway for Authorize.net and WooCommerce by Pledged Plugins
 Plugin URI: https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/
-Description: A payment gateway for Authorize.net. An Authorize.net account and a server with cURL, SSL support, and a valid SSL certificate is required (for security reasons) for this gateway to function. Requires WC 3.3+
+Description: A payment gateway for Authorize.net. An Authorize.net account and a server with cURL, SSL support, and a valid SSL certificate is required (for security reasons) for this gateway to function. Requires WC 7.6+
 Version: 6.1.29
 Author: Pledged Plugins
 Author URI: https://pledgedplugins.com
 Text Domain: wc-authnet
 Domain Path: /languages
-WC requires at least: 3.3
+Requires at least: 6.6
+Requires PHP: 7.2
+WC requires at least: 7.6
 WC tested up to: 11.2
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -65,8 +67,8 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 	}
 
 	define( 'WC_AUTHNET_VERSION', '6.1.29' );
-	define( 'WC_AUTHNET_MIN_PHP_VER', '5.6.0' );
-	define( 'WC_AUTHNET_MIN_WC_VER', '3.3' );
+	define( 'WC_AUTHNET_MIN_PHP_VER', '7.2' );
+	define( 'WC_AUTHNET_MIN_WC_VER', '7.6' );
 	define( 'WC_AUTHNET_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 	define( 'WC_AUTHNET_PLUGIN_URL', untrailingslashit( plugins_url( basename( plugin_dir_path( __FILE__ ) ), basename( __FILE__ ) ) ) );
 	define( 'WC_AUTHNET_MAIN_FILE', __FILE__ );
@@ -136,9 +138,32 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 			add_action( 'admin_init', array( $this, 'check_environment' ) );
 			add_action( 'admin_notices', array( $this, 'admin_notices' ), 15 );
 			add_action( 'plugins_loaded', array( $this, 'init_environment' ) );
+			add_filter( 'wcapgp_processor_integration', array( __CLASS__, 'wallet_integration' ), 10, 3 );
 
 			wc_authnet_fs()->add_filter( 'templates/checkout.php', array( $this, 'checkout_notice' ) );
 			wc_authnet_fs()->add_filter( 'templates/pricing.php', array( $this, 'checkout_notice' ) );
+		}
+
+		/**
+		 * Authorize.net's integration with the WooCommerce Apple Pay and Google Pay extension.
+		 *
+		 * Hooked to the extension's wcapgp_processor_integration filter. The integration class implements an
+		 * interface from the extension, so it is only loaded here, when the extension asks for it. The Legacy
+		 * AIM gateway doesn't take wallet payments, so it is left alone.
+		 *
+		 * @param WCAPGP_Processor_Integration|null $integration Integration so far.
+		 * @param WC_Payment_Gateway                $gateway     Processor gateway the wallet hands payments to.
+		 * @param string                            $wallet_id   Wallet gateway ID.
+		 * @return WCAPGP_Processor_Integration|null
+		 */
+		public static function wallet_integration( $integration, $gateway, $wallet_id ) {
+			if ( ! $gateway instanceof WC_Gateway_Authnet || ! method_exists( $gateway, 'process_wallet_payment' ) || ! interface_exists( 'WCAPGP_Processor_Integration' ) ) {
+				return $integration;
+			}
+
+			require_once dirname( __FILE__ ) . '/includes/class-wc-authnet-wallet-integration.php';
+
+			return new WC_Authnet_Wallet_Integration( $gateway );
 		}
 
 		public function submenu_setup() {
@@ -224,6 +249,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 			if ( ! class_exists( 'WC_Authnet_API' ) ) {
 				include_once( dirname( __FILE__ ) . '/includes/class-wc-authnet-api.php' );
 			}
+			require_once( dirname( __FILE__ ) . '/includes/class-wc-authnet-address.php' );
 
 			// Init the gateway itself
 			$this->init_gateways();
@@ -236,30 +262,24 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 			add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
 			add_action( 'admin_menu', array( $this, 'submenu_setup' ), 80 );
 
+			$this->add_order_status_hooks();
+
+		}
+
+		/**
+		 * Capture authorized charges when an order is processed or completed, and void them when it is cancelled
+		 * or refunded, through the Authorize.net API or Legacy AIM, whichever the gateway uses.
+		 */
+		public function add_order_status_hooks() {
 			$free_api_method = WC_Authnet_API::get_free_api_method();
+			$capture         = $free_api_method == 'aim' ? 'capture_payment_aim' : 'capture_payment';
+			$cancel          = $free_api_method == 'aim' ? 'cancel_payment_aim' : 'cancel_payment';
 
-			if ( $free_api_method == 'aim' ) {
-				if( version_compare( WC_VERSION, '8.4.0', '<' ) ) {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment_aim' ), 10, 2 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment_aim' ), 10, 2 );
-				} else {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment_aim' ), 10, 3 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment_aim' ), 10, 3 );
-				}
-				add_action( 'woocommerce_order_status_cancelled', array( $this, 'cancel_payment_aim' ) );
-				add_action( 'woocommerce_order_status_refunded', array( $this, 'cancel_payment_aim' ) );
-			} else {
-				if( version_compare( WC_VERSION, '8.4.0', '<' ) ) {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment' ), 10, 2 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment' ), 10, 2 );
-				} else {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment' ), 10, 3 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment' ), 10, 3 );
-				}
-				add_action( 'woocommerce_order_status_cancelled', array( $this, 'cancel_payment' ) );
-				add_action( 'woocommerce_order_status_refunded', array( $this, 'cancel_payment' ) );
-			}
-
+			// WooCommerce 8.4+ also passes the status transition; earlier versions pass only the order ID and order.
+			add_action( 'woocommerce_order_status_processing', array( $this, $capture ), 10, 3 );
+			add_action( 'woocommerce_order_status_completed', array( $this, $capture ), 10, 3 );
+			add_action( 'woocommerce_order_status_cancelled', array( $this, $cancel ) );
+			add_action( 'woocommerce_order_status_refunded', array( $this, $cancel ) );
 		}
 
 		/**
@@ -443,6 +463,17 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 		}
 
 		/**
+		 * The card gateway WooCommerce has loaded, so captures and voids don't construct (and hook) another one.
+		 *
+		 * @return WC_Gateway_Authnet
+		 */
+		private function get_card_gateway() {
+			$gateways = WC()->payment_gateways() ? WC()->payment_gateways()->payment_gateways() : array();
+
+			return isset( $gateways['authnet'] ) && $gateways['authnet'] instanceof WC_Gateway_Authnet ? $gateways['authnet'] : new WC_Gateway_Authnet();
+		}
+
+		/**
 		 * Capture payment when the order is changed from on-hold to complete or processing
 		 *
 		 * @param int $order_id
@@ -455,7 +486,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 				$charge   = $order->get_meta( '_authnet_charge_id' );
 				$captured = $order->get_meta( '_authnet_charge_captured' );
 
-				$gateway = new WC_Gateway_Authnet();
+				$gateway = $this->get_card_gateway();
 
 				if ( apply_filters( 'wc_authnet_capture_on_status_change', $gateway->capture_on_status_change, $order, $status_transition ) && $charge && $captured == 'no' ) {
 
@@ -576,7 +607,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 				$charge   = $order->get_meta( '_authnet_charge_id' );
 				$captured = $order->get_meta( '_authnet_charge_captured' );
 
-				$gateway = new WC_Gateway_Authnet();
+				$gateway = $this->get_card_gateway();
 
 				if ( apply_filters( 'wc_authnet_capture_on_status_change', $gateway->capture_on_status_change, $order, $status_transition ) && $charge && $captured == 'no' ) {
 
@@ -643,7 +674,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 
 				if ( $charge && $charge_captured != 'yes' ) {
 
-					$gateway = new WC_Gateway_Authnet();
+					$gateway = $this->get_card_gateway();
 
 					$gateway->log( "Info: Beginning cancel payment for order {$order_id} for the amount of {$order->get_total()}" );
 

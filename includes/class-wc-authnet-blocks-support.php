@@ -202,46 +202,28 @@ final class WC_Authnet_Blocks_Support extends AbstractPaymentMethodType {
 	 * @return array Arrays of icons metadata.
 	 */
 	private function get_icons() {
-		$allowed_card_types = (array) $this->settings['allowed_card_types'];
-		if( in_array( 'visa', $allowed_card_types ) ) {
-			$icons_src['visa'] = [
-				'src' => WC_HTTPS::force_https_url( WC()->plugin_url() . '/assets/images/icons/credit-cards/visa.svg' ),
-				'alt' => __( 'Visa', 'wc-authnet' ),
-			];
-		}
-		if( in_array( 'mastercard', $allowed_card_types ) ) {
-			$icons_src['mastercard'] = [
-				'src' => WC_HTTPS::force_https_url( WC()->plugin_url() . '/assets/images/icons/credit-cards/mastercard.svg' ),
-				'alt' => __( 'Mastercard', 'wc-authnet' ),
-			];
-		}
-		if( in_array( 'amex', $allowed_card_types ) ) {
-			$icons_src['amex'] = [
-				'src' => WC_HTTPS::force_https_url( WC()->plugin_url() . '/assets/images/icons/credit-cards/amex.svg' ),
-				'alt' => __( 'American Express', 'wc-authnet' ),
-			];
+		// Card type setting => [ icon key and file name, alt text ], in display order.
+		$card_icons = array(
+			'visa'        => array( 'visa', __( 'Visa', 'wc-authnet' ) ),
+			'mastercard'  => array( 'mastercard', __( 'Mastercard', 'wc-authnet' ) ),
+			'amex'        => array( 'amex', __( 'American Express', 'wc-authnet' ) ),
+			'discover'    => array( 'discover', _x( 'Discover', 'Name of credit card', 'wc-authnet' ) ),
+			'jcb'         => array( 'jcb', __( 'JCB', 'wc-authnet' ) ),
+			'diners-club' => array( 'diners', __( 'Diners', 'wc-authnet' ) ),
+		);
+
+		$allowed_card_types = isset( $this->settings['allowed_card_types'] ) ? (array) $this->settings['allowed_card_types'] : array();
+		$icons_src          = array();
+
+		foreach ( $card_icons as $card_type => list( $icon, $alt ) ) {
+			if ( in_array( $card_type, $allowed_card_types, true ) ) {
+				$icons_src[ $icon ] = array(
+					'src' => WC_HTTPS::force_https_url( WC()->plugin_url() . '/assets/images/icons/credit-cards/' . $icon . '.svg' ),
+					'alt' => $alt,
+				);
+			}
 		}
 
-		if ( 'USD' === get_woocommerce_currency() ) {
-			if( in_array( 'discover', $allowed_card_types ) ) {
-				$icons_src['discover'] = [
-					'src' => WC_HTTPS::force_https_url( WC()->plugin_url() . '/assets/images/icons/credit-cards/discover.svg' ),
-					'alt' => _x( 'Discover', 'Name of credit card', 'wc-authnet' ),
-				];
-			}
-			if( in_array( 'jcb', $allowed_card_types ) ) {
-				$icons_src['jcb']      = [
-					'src' => WC_HTTPS::force_https_url( WC()->plugin_url() . '/assets/images/icons/credit-cards/jcb.svg' ),
-					'alt' => __( 'JCB', 'wc-authnet' ),
-				];
-			}
-			if( in_array( 'diners-club', $allowed_card_types ) ) {
-				$icons_src['diners'] = [
-					'src' => WC_HTTPS::force_https_url( WC()->plugin_url() . '/assets/images/icons/credit-cards/diners.svg' ),
-					'alt' => __( 'Diners', 'wc-authnet' ),
-				];
-			}
-		}
 		return $icons_src;
 	}
 

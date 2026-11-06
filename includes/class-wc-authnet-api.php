@@ -153,14 +153,22 @@ class WC_Authnet_API {
 		if ( ! self::$statement_descriptor ) {
 			$options = get_option( 'woocommerce_authnet_settings' );
 
-			if ( isset( $options['statement_descriptor'] ) ) {
-				self::set_statement_descriptor( $options['statement_descriptor'] );
-			} else {
-				self::set_statement_descriptor( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
-			}
+			self::set_statement_descriptor( self::descriptor_or_site_name( isset( $options['statement_descriptor'] ) ? $options['statement_descriptor'] : '' ) );
 		}
 
 		return self::$statement_descriptor;
+	}
+
+	/**
+	 * The Statement Descriptor setting, or the site name when it is empty.
+	 *
+	 * @param string|null $descriptor Setting value.
+	 * @return string
+	 */
+	public static function descriptor_or_site_name( $descriptor ) {
+		$descriptor = trim( (string) $descriptor );
+
+		return '' !== $descriptor ? $descriptor : wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 	}
 
 	public static function execute( $request_method, $payment_args = array() ) {
@@ -188,24 +196,20 @@ class WC_Authnet_API {
 			'body' 	  => json_encode( $request_args ),
 		);
 		$response = wp_remote_post( $request_url, $args );
-
-		if( ! is_wp_error( $response ) ) {
-			$response = preg_replace( '/[\x00-\x1F\x80-\xFF]/', '', wp_remote_retrieve_body( $response ) );
-			$result   = json_decode( wc_clean( wp_unslash( $response ) ), true );
+		if ( ! is_wp_error( $response ) ) {
+			// Authorize.net starts its JSON with a byte-order mark, which json_decode() rejects.
+			$body   = preg_replace( '/^\xEF\xBB\xBF/', '', wp_remote_retrieve_body( $response ) );
+			$result = json_decode( $body, true );
+			$result = is_array( $result ) ? self::clean_response( $result ) : null;
 		} else {
 			$result = $response;
-		}
-
-		if( empty( $result ) ) {
-			self::log( "Empty Response. Trying without the wp_unslash." );
-			$result   = json_decode( wc_clean( $response ), true );
 		}
 
 		$gateway_debug = ( self::is_logging() && self::is_debugging() );
 
 		// Saving to Log here
 		if ( $gateway_debug ) {
-			$message = sprintf( "\nPosting to: \n%s\nRequest: \n%s\nResponse: \n%s", $request_url, print_r( $request_args, 1 ), print_r( $result, 1 ) );
+			$message = sprintf( "\nPosting to: \n%s\nRequest: \n%s\nResponse: \n%s", $request_url, print_r( self::redact( $request_args ), 1 ), print_r( self::redact( $result ), 1 ) );
 			self::log( $message );
 		}
 
@@ -230,6 +234,52 @@ class WC_Authnet_API {
 
 		return $result;
 
+	}
+
+	/**
+	 * Sanitises the strings in a decoded response, keeping other value types.
+	 *
+	 * @param array $response Decoded response.
+	 * @return array
+	 */
+	private static function clean_response( array $response ) {
+		foreach ( $response as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$response[ $key ] = self::clean_response( $value );
+			} elseif ( is_string( $value ) ) {
+				$response[ $key ] = wc_clean( $value );
+			}
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Masks secrets and payment details in a request or response before it is logged.
+	 *
+	 * The API key, CVV codes and opaque data (Accept.js nonces, Apple Pay / Google Pay tokens) are
+	 * replaced; card, bank account and routing numbers keep their last four digits. Also covers the
+	 * legacy AIM field names (x_tran_key, x_card_num, x_card_code).
+	 *
+	 * @param mixed $data Request or response.
+	 * @return mixed
+	 */
+	public static function redact( $data ) {
+		if ( ! is_array( $data ) ) {
+			return $data;
+		}
+
+		foreach ( $data as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$data[ $key ] = self::redact( $value );
+			} elseif ( in_array( $key, array( 'transactionKey', 'cardCode', 'dataValue', 'x_tran_key', 'x_card_code' ), true ) ) {
+				$data[ $key ] = '[redacted]';
+			} elseif ( in_array( $key, array( 'cardNumber', 'accountNumber', 'routingNumber', 'x_card_num' ), true ) && is_scalar( $value ) ) {
+				$data[ $key ] = 'XXXX' . substr( (string) $value, -4 );
+			}
+		}
+
+		return $data;
 	}
 
 	/**

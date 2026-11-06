@@ -4,9 +4,9 @@ Donate link: https://wpgateways.com/support/send-payment/
 Tags: Authorize.net, payment gateway, woocommerce, pci, subscriptions
 Plugin URI: https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/
 Author URI: https://pledgedplugins.com
-Requires at least: 4.4
+Requires at least: 6.6
 Tested up to: 7.1
-Requires PHP: 5.6
+Requires PHP: 7.2
 Stable tag: 6.1.29
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -39,7 +39,7 @@ WooCommerce is one of the oldest and most powerful e-commerce solutions for Word
 
 #### Requirements
 * Active  [Authorize.net](https://www.authorize.net/)  account – Sign up for a sandbox account  [here](https://developer.authorize.net/hello_world/sandbox.html)  if you need to test.
-* [**WooCommerce**](https://woocommerce.com/)  version 3.3 or later.
+* [**WooCommerce**](https://woocommerce.com/)  version 7.6 or later, on WordPress 6.6 or later and PHP 7.2 or later.
 * A valid SSL certificate is required to ensure your customer credit card details are safe and make your site PCI DSS compliant. This plugin does not store the customer credit card numbers or sensitive information on your website.
 #### Extend, Contribute, Integrate
 Visit the [plugin page](https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/) for more details. Contributors are welcome to send pull requests via [Bitbucket repository](https://bitbucket.org/pledged/wc-authorize.net-pro/).
@@ -78,6 +78,18 @@ You are in luck! The free version of the plugin has an option to use the AIM int
 A valid SSL certificate is required to ensure your customer credit card details are safe and make your site PCI DSS compliant. This plugin does not store the customer credit card numbers or sensitive information on your website.
 
 == Changelog ==
+
+= Unreleased =
+* Added the Authorize.net account's Payment Gateway ID as Google Pay's Gateway Merchant ID, so it no longer has to be entered in the Google Pay settings (with the WooCommerce Apple Pay and Google Pay extension)
+* Apple Pay and Google Pay can now be offered while the Authorize.net card form is switched off
+* Raised minimum requirements to WooCommerce 7.6, WordPress 6.6 and PHP 7.2 (the block checkout script needs WooCommerce 7.6's checkout events and WordPress 6.6's react-jsx-runtime script)
+* Fixed block checkout card icons and PHP warnings when no card types are allowed
+* Fixed non-ASCII text in Authorize.net responses being corrupted
+* Fixed an empty Statement Descriptor not falling back to the site name
+* Fixed refunds and captures registering the plugin's hooks again
+* Fixed block checkout card errors that could show an object instead of a message
+* Gateway Debug logs now mask API keys, card and account numbers, CVV codes and payment tokens
+* Added an admin warning when no Public Client Key is set
 
 = 6.1.29 =
 * Updated "WC tested up to" header to 11.2

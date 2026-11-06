@@ -4,12 +4,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once dirname( __FILE__ ) . '/trait-wc-authnet-gateway-helpers.php';
+
 /**
  * WC_Gateway_Authnet class.
  *
  * @extends WC_Payment_Gateway_CC
  */
 class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
+
+	use WC_Authnet_Gateway_Helpers;
 
 	public $capture;
 	public $capture_on_status_change;
@@ -25,8 +29,23 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 	public $customer_receipt;
 	public $free_api_method;
 
+	/**
+	 * The Apple Pay / Google Pay payment being charged by process_wallet_payment(), if any.
+	 *
+	 * @var WCAPGP_Wallet_Payment|null
+	 */
+	protected $wallet_payment = null;
+
 	const  ACCEPT_JS_URL_LIVE = 'https://js.authorize.net/v1/Accept.js';
 	const  ACCEPT_JS_URL_TEST = 'https://jstest.authorize.net/v1/Accept.js';
+
+	/**
+	 * Token fields posted by the WooCommerce Apple Pay and Google Pay extension, and their opaque data descriptors.
+	 */
+	const WALLET_DESCRIPTORS = array(
+		'wcapgp_google_pay_payment_data' => 'COMMON.GOOGLE.INAPP.PAYMENT',
+		'wcapgp_apple_pay_payment_data'  => 'COMMON.APPLE.INAPP.PAYMENT',
+	);
 
 	/**
 	 * Constructor
@@ -58,7 +77,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 		$this->testmode             	= $this->get_option( 'testmode' ) === 'yes';
 		$this->capture              	= $this->get_option( 'capture', 'yes' ) === 'yes';
 		$this->capture_on_status_change	= $this->get_option( 'capture_on_status_change', 'yes' ) === 'yes';
-		$this->statement_descriptor 	= $this->get_option( 'statement_descriptor', wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+		$this->statement_descriptor 	= WC_Authnet_API::descriptor_or_site_name( $this->get_option( 'statement_descriptor' ) );
 		$this->login_id             	= $this->get_option( 'login_id' );
 		$this->transaction_key      	= $this->get_option( 'transaction_key' );
 		$this->client_key           	= $this->get_option( 'client_key' );
@@ -140,6 +159,15 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 			echo '<div class="error"><p>' . sprintf( __( 'Gateway error: Please enter your Transaction Key <a href="%s">here</a>', 'wc-authnet' ), admin_url( 'admin.php?page=wc-settings&tab=checkout&section=authnet' ) ) . '</p></div>';
 
 			return;
+		}
+
+		// Without a Public Client Key, Accept.js doesn't tokenize at checkout and the details reach this server.
+		if ( ! $this->client_key ) {
+			echo '<div class="notice notice-warning"><p>' . sprintf(
+				/* translators: %s: URL of the Authorize.net card settings. */
+				__( 'Authorize.net has no Public Client Key, so card numbers and CVV codes are sent to your server instead of being tokenized by Authorize.net in the browser. This widens your PCI compliance scope. <a href="%s">Set your Public Client Key</a>.', 'wc-authnet' ),
+				esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=authnet' ) )
+			) . '</p></div>';
 		}
 
 		// Show message if enabled and FORCE SSL is disabled and WordpressHTTPS plugin is not detected
@@ -247,7 +275,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 				'title'       => __( 'Gateway Debug', 'wc-authnet' ),
 				'label'       => __( 'Log gateway requests and response to the WooCommerce System Status log.', 'wc-authnet' ),
 				'type'        => 'checkbox',
-				'description' => __( '<strong>CAUTION! Enabling this option will write gateway requests possibly including card numbers and CVV to the logs.</strong> Do not turn this on unless you have a problem processing credit cards. You must only ever enable it temporarily for troubleshooting or to send requested information to the plugin author. It must be disabled straight away after the issues are resolved and the plugin logs should be deleted.', 'wc-authnet' ) . ' ' . sprintf( __( '<a target="_blank" href="%s">Click here</a> to check and delete the full log file.', 'wc-authnet' ), esc_url( self::get_log_url() ) ),
+				'description' => __( '<strong>CAUTION! Enabling this option writes gateway requests and responses, including customer names, emails and addresses, to the logs.</strong> API keys, CVV codes and payment tokens are removed, and card and account numbers are masked. Do not turn this on unless you have a problem processing credit cards. You must only ever enable it temporarily for troubleshooting or to send requested information to the plugin author. It must be disabled straight away after the issues are resolved and the plugin logs should be deleted.', 'wc-authnet' ) . ' ' . sprintf( __( '<a target="_blank" href="%s">Click here</a> to check and delete the full log file.', 'wc-authnet' ), esc_url( self::get_log_url() ) ),
 				'default'     => 'no',
 			),
 			'line_items' 		   		=> array(
@@ -389,29 +417,10 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 		}
 
 		// Set the customer's Bill To address
-		$billing_address = array(
-			'firstName'   => substr( $order->get_billing_first_name(), 0, 50 ),
-			'lastName'    => substr( $order->get_billing_last_name(), 0, 50 ),
-			'company'     => substr( $order->get_billing_company(), 0, 50 ),
-			'address'     => substr( trim( $order->get_billing_address_1() . ' ' . $order->get_billing_address_2() ), 0, 60 ),
-			'city'        => substr( $order->get_billing_city(), 0, 40 ),
-			'state'       => substr( $order->get_billing_state(), 0, 40 ),
-			'zip'         => substr( $order->get_billing_postcode(), 0, 20 ),
-			'country'     => substr( $order->get_billing_country(), 0, 60 ),
-			'phoneNumber' => substr( $order->get_billing_phone(), 0, 25 ),
-		);
+		$billing_address = WC_Authnet_Address::bill_to_from_order( $order );
 
 		// Set the customer's Ship To address
-		$shipping_address = array(
-			'firstName' => substr( $order->get_shipping_first_name(), 0, 50 ),
-			'lastName'  => substr( $order->get_shipping_last_name(), 0, 50 ),
-			'company'   => substr( $order->get_shipping_company(), 0, 50 ),
-			'address'   => substr( trim( $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2() ), 0, 60 ),
-			'city'      => substr( $order->get_shipping_city(), 0, 40 ),
-			'state'     => substr( $order->get_shipping_state(), 0, 40 ),
-			'zip'       => substr( $order->get_shipping_postcode(), 0, 20 ),
-			'country'   => substr( $order->get_shipping_country(), 0, 60 ),
-		);
+		$shipping_address = WC_Authnet_Address::ship_to_from_order( $order );
 
 		// Add values for transaction settings
 		$transaction_settings = array(
@@ -519,23 +528,66 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 
 		WC_Authnet_API::log( "Info: Getting payment source with new card details." );
 
+		// Not saving token, so don't define customer either.
+		$authnet_source = $this->get_posted_source_args();
+
+		return (object) array(
+			'token_id' => $token_id,
+			'customer' => ( $authnet_customer ? $authnet_customer->get_id() : false ),
+			'source'   => $authnet_source,
+		);
+	}
+
+	/**
+	 * Get the new payment details posted: an Accept.js nonce, card fields, or an Apple Pay / Google Pay token.
+	 *
+	 * @param bool $allow_wallets Whether Apple Pay / Google Pay tokens are accepted.
+	 *
+	 * @throws Exception For a card type that is not allowed or a missing CVC code.
+	 * @return array|false The details with their 'source_type', or false if none were posted.
+	 */
+	protected function get_posted_source_args( $allow_wallets = true ) {
+
+		// A wallet payment from the WooCommerce Apple Pay and Google Pay extension, whatever the card form holds
+		if ( $allow_wallets && $this->wallet_payment ) {
+			return array(
+				'nonce'       => $this->wallet_payment->get_token(),
+				'descriptor'  => self::WALLET_DESCRIPTORS[ $this->wallet_payment->get_wallet_id() . '_payment_data' ],
+				'source_type' => 'nonce',
+			);
+		}
+
+		// The same, from extension versions that post the checkout form (card form included) with the wallet as the payment method
+		$wallet_field = isset( $_POST['payment_method'] ) ? wc_clean( $_POST['payment_method'] ) . '_payment_data' : '';
+		if ( $allow_wallets && isset( self::WALLET_DESCRIPTORS[ $wallet_field ], $_POST[ $wallet_field ] ) ) {
+			return array(
+				'nonce'       => wc_clean( $_POST[ $wallet_field ] ),
+				'descriptor'  => self::WALLET_DESCRIPTORS[ $wallet_field ],
+				'source_type' => 'nonce',
+			);
+		}
+
 		// New CC info was entered and we have a new token to process
 		if ( isset( $_POST['authnet_nonce'] ) && isset( $_POST['authnet_data_descriptor'] ) ) {
-			$authnet_source_args = array(
-				'nonce'      => wc_clean( $_POST['authnet_nonce'] ),
-				'descriptor' => wc_clean( $_POST['authnet_data_descriptor'] ),
+			return array(
+				'nonce'       => wc_clean( $_POST['authnet_nonce'] ),
+				'descriptor'  => wc_clean( $_POST['authnet_data_descriptor'] ),
+				'source_type' => 'nonce',
 			);
-			$new_source          = $authnet_source_args['source_type'] = 'nonce';
-		} elseif ( isset( $_POST['authnet-card-number'] ) && ! empty( $_POST['authnet-card-number'] ) && isset( $_POST['authnet-card-expiry'] ) && isset( $_POST['authnet-card-cvc'] ) ) {
+		}
+
+		if ( ! empty( $_POST['authnet-card-number'] ) && isset( $_POST['authnet-card-expiry'] ) && isset( $_POST['authnet-card-cvc'] ) ) {
 			$authnet_source_args = array(
 				'card_number' => str_replace( ' ', '', wc_clean( $_POST['authnet-card-number'] ) ),
 				'expiry'      => wc_clean( $_POST['authnet-card-expiry'] ),
 				'cvc'         => wc_clean( $_POST['authnet-card-cvc'] ),
+				'source_type' => 'card',
 			);
+			$card_type = $this->get_card_type( $authnet_source_args['card_number'], 'pattern', 'name' );
 
 			// Check for card type supported or not
-			if ( ! in_array( $this->get_card_type( $authnet_source_args['card_number'], 'pattern', 'name' ), $this->allowed_card_types ) ) {
-				WC_Authnet_API::log( sprintf( __( 'Card type being used is not one of supported types in plugin settings: %s', 'wc-authnet' ), $this->get_card_type( $authnet_source_args['card_number'], 'pattern', 'name' ) ) );
+			if ( ! in_array( $card_type, $this->allowed_card_types ) ) {
+				WC_Authnet_API::log( sprintf( __( 'Card type being used is not one of supported types in plugin settings: %s', 'wc-authnet' ), $card_type ) );
 				WC_Authnet_API::log( "Error: Card Type Not Accepted." );
 				throw new Exception( __( 'Card Type Not Accepted.', 'wc-authnet' ) );
 			}
@@ -544,31 +596,23 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 				throw new Exception( __( 'CVC code is required.', 'wc-authnet' ) );
 			}
 
-			$new_source = $authnet_source_args['source_type'] = 'card';
-		} elseif( isset( $_POST['wcapgp_google_pay_payment_data'] ) ) {
-			$authnet_source_args = array(
-				'nonce' 	 => wc_clean( $_POST['wcapgp_google_pay_payment_data'] ),
-				'descriptor' => 'COMMON.GOOGLE.INAPP.PAYMENT',
-			);
-			$new_source = $authnet_source_args['source_type'] = 'nonce';
-		} elseif( isset( $_POST['wcapgp_apple_pay_payment_data'] ) ) {
-			$authnet_source_args = array(
-				'nonce' 	 => wc_clean( $_POST['wcapgp_apple_pay_payment_data'] ),
-				'descriptor' => 'COMMON.APPLE.INAPP.PAYMENT',
-			);
-			$new_source = $authnet_source_args['source_type'] = 'nonce';
+			return $authnet_source_args;
 		}
 
-		if ( isset( $new_source ) ) {
-			// Not saving token, so don't define customer either.
-			$authnet_source = $authnet_source_args;
+		// Token from the WooCommerce Apple Pay and Google Pay extension
+		if ( $allow_wallets ) {
+			foreach ( self::WALLET_DESCRIPTORS as $field => $descriptor ) {
+				if ( isset( $_POST[ $field ] ) ) {
+					return array(
+						'nonce'       => wc_clean( $_POST[ $field ] ),
+						'descriptor'  => $descriptor,
+						'source_type' => 'nonce',
+					);
+				}
+			}
 		}
 
-		return (object) array(
-			'token_id' => $token_id,
-			'customer' => ( $authnet_customer ? $authnet_customer->get_id() : false ),
-			'source'   => $authnet_source,
-		);
+		return false;
 	}
 
 	/**
@@ -727,8 +771,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 			$order->update_meta_data( '_authnet_charge_captured', 'no' );
 			$order->save();
 
-			$instance = new WC_Authnet();
-			$instance->cancel_payment( $order_id );
+			WC_Authnet::get_instance()->cancel_payment( $order_id );
 
 			$order       = wc_get_order( $order_id );
 			$void_status = $order->get_meta( '_authnet_void' );
@@ -762,17 +805,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 					'customer'        => array(
 						'email' 	  => substr( $order->get_billing_email(), 0, 255 ),
 					),
-					'billTo'          => array(
-						'firstName'   => substr( $order->get_billing_first_name(), 0, 50 ),
-						'lastName' 	  => substr( $order->get_billing_last_name(), 0, 50 ),
-						'company' 	  => substr( $order->get_billing_company(), 0, 50 ),
-						'address' 	  => substr( trim( $order->get_billing_address_1() . ' ' . $order->get_billing_address_2() ), 0, 60 ),
-						'city' 	      => substr( $order->get_billing_city(), 0, 40 ),
-						'state' 	  => substr( $order->get_billing_state(), 0, 40 ),
-						'zip' 		  => substr( $order->get_billing_postcode(), 0, 20 ),
-						'country' 	  => substr( $order->get_billing_country(), 0, 60 ),
-						'phoneNumber' => substr( $order->get_billing_phone(), 0, 25 ),
-					),
+					'billTo'          => WC_Authnet_Address::bill_to_from_order( $order ),
 				),
 			);
 			$args = apply_filters( 'wc_authnet_refund_request_args', $args, $order );
@@ -798,63 +831,6 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 		return true;
 	}
 
-	/**
-	 * Taken from https://gist.github.com/jaywilliams/119517
-	 *
-	 * @param $string
-	 *
-	 * @return string
-	 */
-	protected function format_line_item( $string ) {
-
-		// Replace Single Curly Quotes
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 152 );
-		$replace[] = "'";
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 153 );
-		$replace[] = "'";
-
-		// Replace Smart Double Curly Quotes
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 156 );
-		$replace[] = '"';
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 157 );
-		$replace[] = '"';
-
-		// Replace En Dash
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 147 );
-		$replace[] = '--';
-
-		// Replace Em Dash
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 148 );
-		$replace[] = '---';
-
-		// Replace Bullet
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 162 );
-		$replace[] = '*';
-
-		// Replace Middle Dot
-		$search[]  = chr( 194 ) . chr( 183 );
-		$replace[] = '*';
-
-		// Replace Ellipsis with three consecutive dots
-		$search[]  = chr( 226 ) . chr( 128 ) . chr( 166 );
-		$replace[] = '...';
-
-		// Replace Ampersand with dash
-		$search[]  = '&';
-		$replace[] = '-';
-
-		// Replace Percentage with pc char
-		$search[]  = '%';
-		$replace[] = 'pc';
-
-		// Apply Replacements
-		$string = str_replace( $search, $replace, $string );
-
-		// Remove any non-ASCII Characters
-		$string = preg_replace( "/[^\x01-\x7F]/", "", $string );
-
-		return $string;
-	}
 
 	function get_card_type( $value, $field = 'pattern', $return = 'label' ) {
 		$card_types = array(
@@ -911,125 +887,84 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 
 	}
 
-	/**
-	 * Returns the order_id if on the checkout pay page
-	 *
-	 * @return int order identifier
-	 * @since 3.3
-	 */
-	public function get_checkout_pay_page_order_id() {
-		global $wp;
 
-		return ( isset( $wp->query_vars['order-pay'] ) ? absint( $wp->query_vars['order-pay'] ) : 0 );
-	}
 
-	function get_payment_currency( $order_id = false ) {
-		$currency = get_woocommerce_currency();
-		$order_id = ( ! $order_id ? $this->get_checkout_pay_page_order_id() : $order_id );
 
-		// Gets currency for the current order, that is about to be paid for
-		if ( $order_id ) {
-			$order    = wc_get_order( $order_id );
-			$currency = $order->get_currency();
-		}
 
-		return $currency;
-	}
+
 
 	/**
-	 * get_avs_message function.
+	 * Charges an Apple Pay / Google Pay payment from the WooCommerce Apple Pay and Google Pay extension.
 	 *
-	 * @access public
+	 * Called by WC_Authnet_Wallet_Integration. The payment is used in place of the posted card details
+	 * for the length of this call.
 	 *
-	 * @param string $code
-	 *
-	 * @return string
+	 * @param WCAPGP_Wallet_Payment $payment  Wallet payment.
+	 * @param int                   $order_id Order ID.
+	 * @param bool                  $retry    Passed on to process_payment().
+	 * @return array
 	 */
-	public function get_avs_message( $code ) {
-		$avs_messages = array(
-			'A' => __( 'Street Address: Match -- First 5 Digits of ZIP: No Match', 'wc-authnet' ),
-			'B' => __( 'Address not provided for AVS check or street address match, postal code could not be verified', 'wc-authnet' ),
-			'E' => __( 'AVS Error', 'wc-authnet' ),
-			'G' => __( 'Non U.S. Card Issuing Bank', 'wc-authnet' ),
-			'N' => __( 'Street Address: No Match -- First 5 Digits of ZIP: No Match', 'wc-authnet' ),
-			'P' => __( 'AVS not applicable for this transaction', 'wc-authnet' ),
-			'R' => __( 'Retry, System Is Unavailable', 'wc-authnet' ),
-			'S' => __( 'AVS Not Supported by Card Issuing Bank', 'wc-authnet' ),
-			'U' => __( 'Address Information For This Cardholder Is Unavailable', 'wc-authnet' ),
-			'W' => __( 'Street Address: No Match -- All 9 Digits of ZIP: Match', 'wc-authnet' ),
-			'X' => __( 'Street Address: Match -- All 9 Digits of ZIP: Match', 'wc-authnet' ),
-			'Y' => __( 'Street Address: Match - First 5 Digits of ZIP: Match', 'wc-authnet' ),
-			'Z' => __( 'Street Address: No Match - First 5 Digits of ZIP: Match', 'wc-authnet' ),
-		);
+	public function process_wallet_payment( $payment, $order_id, $retry = true ) {
+		$this->wallet_payment = $payment;
 
-		if ( array_key_exists( $code, $avs_messages ) ) {
-			return $code . ' - ' . $avs_messages[ $code ];
-		} else {
-			return $code;
+		try {
+			return $this->process_payment( $order_id, $retry );
+		} finally {
+			$this->wallet_payment = null;
 		}
 	}
 
 	/**
-	 * get_cvv_message function.
+	 * Whether Apple Pay / Google Pay payments can go through Authorize.net: the API credentials are set.
+	 * The card gateway itself may be switched off.
 	 *
-	 * @access public
-	 *
-	 * @param string $code
-	 *
-	 * @return string
+	 * @param string $wallet_id Wallet gateway ID.
+	 * @return bool
 	 */
-	public function get_cvv_message( $code ) {
-		$cvv_messages = array(
-			'M' => __( 'CVV2/CVC2 Match', 'wc-authnet' ),
-			'N' => __( 'CVV2 / CVC2 No Match', 'wc-authnet' ),
-			'P' => __( 'Not Processed', 'wc-authnet' ),
-			'S' => __( 'Merchant Has Indicated that CVV2 / CVC2 is not present on card', 'wc-authnet' ),
-			'U' => __( 'Issuer is not certified and/or has not provided visa encryption keys', 'wc-authnet' ),
-		);
-
-		if ( array_key_exists( $code, $cvv_messages ) ) {
-			return $code . ' - ' . $cvv_messages[ $code ];
-		} else {
-			return $code;
-		}
+	public function is_wallet_ready( $wallet_id ) {
+		return $this->login_id && $this->transaction_key;
 	}
 
-	public function is_valid_pay_for_order_endpoint() {
-
-		// If not on the pay for order page, return false.
-		if ( ! is_wc_endpoint_url( 'order-pay' ) || ! isset( $_GET['key'] ) ) {
-			return false;
-		}
-
-		$order_id = absint( get_query_var( 'order-pay' ) );
-		$order    = wc_get_order( $order_id );
-
-		// If the order is not found or the param `key` is not set or the order key does not match the order key in the URL param, return false.
-		if ( ! $order || ! isset( $_GET['key'] ) || wc_clean( wp_unslash( $_GET['key'] ) ) !== $order->get_order_key() ) {
-			return false;
-		}
-
-		// If the order doesn't need payment, we don't need to prepare the payment page.
-		if ( ! $order->needs_payment() ) {
-			return false;
-		}
-
-		return current_user_can( 'pay_for_order', $order->get_id() );
-	}
-
-	public function get_log_url() {
-		$log_file_name = WC_Log_Handler_File::get_log_file_name( 'woocommerce-gateway-authnet' );
-		$name_array    = explode( '-', $log_file_name );
-		if ( ! empty( $name_array[6] ) ) {
-			unset( $name_array[6] );
-		}
-		return admin_url( 'admin.php?page=wc-status&tab=logs&view=single_file&file_id=' . implode( '-', $name_array ) );
-	}
-
+	/**
+	 * Google Pay tokenization parameters. Google Pay's gatewayMerchantId for Authorize.net is the account's
+	 * Payment Gateway ID, so it doesn't have to be typed into the Google Pay settings.
+	 *
+	 * @return array
+	 */
 	public function get_params_google_pay() {
-		return apply_filters( 'wc_authnet_params_google_pay', array(
-			'gateway' => 'authorizenet'
-		) );
+		$params     = array( 'gateway' => 'authorizenet' );
+		$gateway_id = $this->get_gateway_id();
+
+		if ( $gateway_id ) {
+			$params['gateway_merchant_id'] = $gateway_id;
+		}
+
+		return apply_filters( 'wc_authnet_params_google_pay', $params );
+	}
+
+	/**
+	 * The Authorize.net account's Payment Gateway ID, from getMerchantDetailsRequest.
+	 *
+	 * Cached for a day, or for an hour when Authorize.net doesn't give one, so checkout pages don't ask every time.
+	 *
+	 * @return string Empty when unknown.
+	 */
+	public function get_gateway_id() {
+		if ( ! $this->login_id || ! $this->transaction_key ) {
+			return '';
+		}
+
+		$transient  = 'authnet_gateway_id_' . md5( $this->login_id . ( $this->testmode ? '_test' : '_live' ) );
+		$gateway_id = get_transient( $transient );
+
+		if ( false === $gateway_id ) {
+			$response   = WC_Authnet_API::execute( 'getMerchantDetailsRequest', array() );
+			$gateway_id = ! is_wp_error( $response ) && ! empty( $response['gatewayId'] ) ? (string) $response['gatewayId'] : '';
+
+			set_transient( $transient, $gateway_id, $gateway_id ? HOUR_IN_SECONDS * 24 : HOUR_IN_SECONDS );
+		}
+
+		return $gateway_id;
 	}
 
 }

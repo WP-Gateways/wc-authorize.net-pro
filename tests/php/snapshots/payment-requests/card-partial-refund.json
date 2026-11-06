@@ -1,0 +1,29 @@
+{
+    "refId": 60,
+    "transactionRequest": {
+        "transactionType": "refundTransaction",
+        "amount": "5.00",
+        "currencyCode": "USD",
+        "payment": {
+            "creditCard": {
+                "cardNumber": "",
+                "expirationDate": "XXXX"
+            }
+        },
+        "refTransId": "T1",
+        "customer": {
+            "email": "jane@example.com"
+        },
+        "billTo": {
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "company": "Doe & Co",
+            "address": "1 Main St Suite 2",
+            "city": "Springfield",
+            "state": "IL",
+            "zip": "62701",
+            "country": "US",
+            "phoneNumber": "555-0100"
+        }
+    }
+}
