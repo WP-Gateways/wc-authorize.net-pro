@@ -11,8 +11,9 @@
  * checkout support. (The Legacy AIM gateway has the same class name as the card gateway, so it can't be
  * loaded alongside it.)
  *
- * gateway.php is not loaded: it does nothing when wc_authnet_fs() already exists (as it does here, from
- * the Freemius stub), so the plugin constants and class files are loaded directly.
+ * gateway.php itself is not run: it does nothing when wc_authnet_fs() already exists (as it does here, from
+ * the Freemius stub). The plugin constants and class files are loaded directly, and the main WC_Authnet class
+ * is read out of gateway.php by wc_authnet_test_load_main_class(), so it is tested where it is.
  */
 
 require_once __DIR__ . '/../../vendor/autoload.php';
@@ -52,3 +53,40 @@ require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-authnet-api.php';
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-authnet-address.php';
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-gateway-authnet.php';
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-authnet-blocks-support.php';
+
+/**
+ * Load the WC_Authnet class from gateway.php, without running the rest of the file (which starts Freemius).
+ *
+ * PHP's tokenizer finds the class and its closing brace, so the class stays in gateway.php.
+ */
+function wc_authnet_test_load_main_class() {
+	$tokens   = token_get_all( file_get_contents( WC_AUTHNET_MAIN_FILE ) );
+	$code     = '';
+	$in_class = false;
+	$depth    = 0;
+
+	foreach ( $tokens as $i => $token ) {
+		$text = is_array( $token ) ? $token[1] : $token;
+
+		if ( ! $in_class && is_array( $token ) && T_CLASS === $token[0] && is_array( $tokens[ $i + 2 ] ) && 'WC_Authnet' === $tokens[ $i + 2 ][1] ) {
+			$in_class = true;
+		}
+
+		if ( ! $in_class ) {
+			continue;
+		}
+
+		$code .= $text;
+
+		// "{$" in a string opens a brace that a plain "}" closes.
+		if ( '{' === $text || ( is_array( $token ) && in_array( $token[0], array( T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES ), true ) ) ) {
+			$depth++;
+		} elseif ( '}' === $text && 0 === --$depth ) {
+			break;
+		}
+	}
+
+	eval( $code ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- test bootstrap only.
+}
+
+wc_authnet_test_load_main_class();

@@ -43,6 +43,11 @@ abstract class TestCase extends PHPUnitTestCase {
 		WC_Authnet_API::set_logging( false );
 		WC_Authnet_API::set_debugging( false );
 
+		// A fresh main plugin instance for each test.
+		$instance = new \ReflectionProperty( \WC_Authnet::class, 'instance' );
+		$instance->setAccessible( true );
+		$instance->setValue( null, null );
+
 		$this->api        = new AuthnetApi();
 		$this->transients = array();
 

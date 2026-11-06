@@ -23,6 +23,10 @@ class WC_Authnet_Test_Freemius {
 		return self::$enterprise;
 	}
 
+	public function add_filter( $tag, $callback ) {
+		return true;
+	}
+
 	public function get_upgrade_url() {
 		return 'https://example.com/upgrade';
 	}

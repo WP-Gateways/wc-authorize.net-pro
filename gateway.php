@@ -239,30 +239,24 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 			add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
 			add_action( 'admin_menu', array( $this, 'submenu_setup' ), 80 );
 
+			$this->add_order_status_hooks();
+
+		}
+
+		/**
+		 * Capture authorized charges when an order is processed or completed, and void them when it is cancelled
+		 * or refunded, through the Authorize.net API or Legacy AIM, whichever the gateway uses.
+		 */
+		public function add_order_status_hooks() {
 			$free_api_method = WC_Authnet_API::get_free_api_method();
+			$capture         = $free_api_method == 'aim' ? 'capture_payment_aim' : 'capture_payment';
+			$cancel          = $free_api_method == 'aim' ? 'cancel_payment_aim' : 'cancel_payment';
 
-			if ( $free_api_method == 'aim' ) {
-				if( version_compare( WC_VERSION, '8.4.0', '<' ) ) {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment_aim' ), 10, 2 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment_aim' ), 10, 2 );
-				} else {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment_aim' ), 10, 3 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment_aim' ), 10, 3 );
-				}
-				add_action( 'woocommerce_order_status_cancelled', array( $this, 'cancel_payment_aim' ) );
-				add_action( 'woocommerce_order_status_refunded', array( $this, 'cancel_payment_aim' ) );
-			} else {
-				if( version_compare( WC_VERSION, '8.4.0', '<' ) ) {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment' ), 10, 2 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment' ), 10, 2 );
-				} else {
-					add_action( 'woocommerce_order_status_processing', array( $this, 'capture_payment' ), 10, 3 );
-					add_action( 'woocommerce_order_status_completed', array( $this, 'capture_payment' ), 10, 3 );
-				}
-				add_action( 'woocommerce_order_status_cancelled', array( $this, 'cancel_payment' ) );
-				add_action( 'woocommerce_order_status_refunded', array( $this, 'cancel_payment' ) );
-			}
-
+			// WooCommerce 8.4+ also passes the status transition; earlier versions pass only the order ID and order.
+			add_action( 'woocommerce_order_status_processing', array( $this, $capture ), 10, 3 );
+			add_action( 'woocommerce_order_status_completed', array( $this, $capture ), 10, 3 );
+			add_action( 'woocommerce_order_status_cancelled', array( $this, $cancel ) );
+			add_action( 'woocommerce_order_status_refunded', array( $this, $cancel ) );
 		}
 
 		/**
