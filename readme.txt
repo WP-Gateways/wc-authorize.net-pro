@@ -80,6 +80,8 @@ A valid SSL certificate is required to ensure your customer credit card details 
 == Changelog ==
 
 = Unreleased =
+* Added the Authorize.net account's Payment Gateway ID as Google Pay's Gateway Merchant ID, so it no longer has to be entered in the Google Pay settings (with the WooCommerce Apple Pay and Google Pay extension)
+* Apple Pay and Google Pay can now be offered while the Authorize.net card form is switched off
 * Raised minimum requirements to WooCommerce 7.6, WordPress 6.6 and PHP 7.2 (the block checkout script needs WooCommerce 7.6's checkout events and WordPress 6.6's react-jsx-runtime script)
 * Fixed block checkout card icons and PHP warnings when no card types are allowed
 * Fixed non-ASCII text in Authorize.net responses being corrupted

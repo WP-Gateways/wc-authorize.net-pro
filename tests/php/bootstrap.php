@@ -47,6 +47,7 @@ if ( ! function_exists( 'wc_clean' ) ) {
 require_once __DIR__ . '/stubs/woocommerce.php';
 require_once __DIR__ . '/stubs/freemius.php';
 require_once __DIR__ . '/stubs/plugin.php';
+require_once __DIR__ . '/stubs/wcapgp.php';
 
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-gateway-authnet-logger.php';
 require_once WC_AUTHNET_PLUGIN_PATH . '/includes/class-wc-authnet-api.php';
@@ -76,7 +77,8 @@ function wc_authnet_test_load_main_class() {
 			continue;
 		}
 
-		$code .= $text;
+		// __FILE__ means gateway.php, not this eval()'d code.
+		$code .= is_array( $token ) && T_FILE === $token[0] ? var_export( WC_AUTHNET_MAIN_FILE, true ) : $text;
 
 		// "{$" in a string opens a brace that a plain "}" closes.
 		if ( '{' === $text || ( is_array( $token ) && in_array( $token[0], array( T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES ), true ) ) ) {

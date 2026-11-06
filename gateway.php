@@ -138,9 +138,32 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 			add_action( 'admin_init', array( $this, 'check_environment' ) );
 			add_action( 'admin_notices', array( $this, 'admin_notices' ), 15 );
 			add_action( 'plugins_loaded', array( $this, 'init_environment' ) );
+			add_filter( 'wcapgp_processor_integration', array( __CLASS__, 'wallet_integration' ), 10, 3 );
 
 			wc_authnet_fs()->add_filter( 'templates/checkout.php', array( $this, 'checkout_notice' ) );
 			wc_authnet_fs()->add_filter( 'templates/pricing.php', array( $this, 'checkout_notice' ) );
+		}
+
+		/**
+		 * Authorize.net's integration with the WooCommerce Apple Pay and Google Pay extension.
+		 *
+		 * Hooked to the extension's wcapgp_processor_integration filter. The integration class implements an
+		 * interface from the extension, so it is only loaded here, when the extension asks for it. The Legacy
+		 * AIM gateway doesn't take wallet payments, so it is left alone.
+		 *
+		 * @param WCAPGP_Processor_Integration|null $integration Integration so far.
+		 * @param WC_Payment_Gateway                $gateway     Processor gateway the wallet hands payments to.
+		 * @param string                            $wallet_id   Wallet gateway ID.
+		 * @return WCAPGP_Processor_Integration|null
+		 */
+		public static function wallet_integration( $integration, $gateway, $wallet_id ) {
+			if ( ! $gateway instanceof WC_Gateway_Authnet || ! method_exists( $gateway, 'process_wallet_payment' ) || ! interface_exists( 'WCAPGP_Processor_Integration' ) ) {
+				return $integration;
+			}
+
+			require_once dirname( __FILE__ ) . '/includes/class-wc-authnet-wallet-integration.php';
+
+			return new WC_Authnet_Wallet_Integration( $gateway );
 		}
 
 		public function submenu_setup() {

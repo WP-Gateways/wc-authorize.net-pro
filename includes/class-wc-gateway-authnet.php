@@ -29,6 +29,13 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 	public $customer_receipt;
 	public $free_api_method;
 
+	/**
+	 * The Apple Pay / Google Pay payment being charged by process_wallet_payment(), if any.
+	 *
+	 * @var WCAPGP_Wallet_Payment|null
+	 */
+	protected $wallet_payment = null;
+
 	const  ACCEPT_JS_URL_LIVE = 'https://js.authorize.net/v1/Accept.js';
 	const  ACCEPT_JS_URL_TEST = 'https://jstest.authorize.net/v1/Accept.js';
 
@@ -541,6 +548,15 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 	 */
 	protected function get_posted_source_args( $allow_wallets = true ) {
 
+		// A wallet payment from the WooCommerce Apple Pay and Google Pay extension, whatever the card form holds
+		if ( $allow_wallets && $this->wallet_payment ) {
+			return array(
+				'nonce'       => $this->wallet_payment->get_token(),
+				'descriptor'  => self::WALLET_DESCRIPTORS[ $this->wallet_payment->get_wallet_id() . '_payment_data' ],
+				'source_type' => 'nonce',
+			);
+		}
+
 		// New CC info was entered and we have a new token to process
 		if ( isset( $_POST['authnet_nonce'] ) && isset( $_POST['authnet_data_descriptor'] ) ) {
 			return array(
@@ -867,10 +883,78 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 
 
 
+	/**
+	 * Charges an Apple Pay / Google Pay payment from the WooCommerce Apple Pay and Google Pay extension.
+	 *
+	 * Called by WC_Authnet_Wallet_Integration. The payment is used in place of the posted card details
+	 * for the length of this call.
+	 *
+	 * @param WCAPGP_Wallet_Payment $payment  Wallet payment.
+	 * @param int                   $order_id Order ID.
+	 * @param bool                  $retry    Passed on to process_payment().
+	 * @return array
+	 */
+	public function process_wallet_payment( $payment, $order_id, $retry = true ) {
+		$this->wallet_payment = $payment;
+
+		try {
+			return $this->process_payment( $order_id, $retry );
+		} finally {
+			$this->wallet_payment = null;
+		}
+	}
+
+	/**
+	 * Whether Apple Pay / Google Pay payments can go through Authorize.net: the API credentials are set.
+	 * The card gateway itself may be switched off.
+	 *
+	 * @param string $wallet_id Wallet gateway ID.
+	 * @return bool
+	 */
+	public function is_wallet_ready( $wallet_id ) {
+		return $this->login_id && $this->transaction_key;
+	}
+
+	/**
+	 * Google Pay tokenization parameters. Google Pay's gatewayMerchantId for Authorize.net is the account's
+	 * Payment Gateway ID, so it doesn't have to be typed into the Google Pay settings.
+	 *
+	 * @return array
+	 */
 	public function get_params_google_pay() {
-		return apply_filters( 'wc_authnet_params_google_pay', array(
-			'gateway' => 'authorizenet'
-		) );
+		$params     = array( 'gateway' => 'authorizenet' );
+		$gateway_id = $this->get_gateway_id();
+
+		if ( $gateway_id ) {
+			$params['gateway_merchant_id'] = $gateway_id;
+		}
+
+		return apply_filters( 'wc_authnet_params_google_pay', $params );
+	}
+
+	/**
+	 * The Authorize.net account's Payment Gateway ID, from getMerchantDetailsRequest.
+	 *
+	 * Cached for a day, or for an hour when Authorize.net doesn't give one, so checkout pages don't ask every time.
+	 *
+	 * @return string Empty when unknown.
+	 */
+	public function get_gateway_id() {
+		if ( ! $this->login_id || ! $this->transaction_key ) {
+			return '';
+		}
+
+		$transient  = 'authnet_gateway_id_' . md5( $this->login_id . ( $this->testmode ? '_test' : '_live' ) );
+		$gateway_id = get_transient( $transient );
+
+		if ( false === $gateway_id ) {
+			$response   = WC_Authnet_API::execute( 'getMerchantDetailsRequest', array() );
+			$gateway_id = ! is_wp_error( $response ) && ! empty( $response['gatewayId'] ) ? (string) $response['gatewayId'] : '';
+
+			set_transient( $transient, $gateway_id, $gateway_id ? HOUR_IN_SECONDS * 24 : HOUR_IN_SECONDS );
+		}
+
+		return $gateway_id;
 	}
 
 }
