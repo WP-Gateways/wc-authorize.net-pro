@@ -443,6 +443,17 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 		}
 
 		/**
+		 * The card gateway WooCommerce has loaded, so captures and voids don't construct (and hook) another one.
+		 *
+		 * @return WC_Gateway_Authnet
+		 */
+		private function get_card_gateway() {
+			$gateways = WC()->payment_gateways() ? WC()->payment_gateways()->payment_gateways() : array();
+
+			return isset( $gateways['authnet'] ) && $gateways['authnet'] instanceof WC_Gateway_Authnet ? $gateways['authnet'] : new WC_Gateway_Authnet();
+		}
+
+		/**
 		 * Capture payment when the order is changed from on-hold to complete or processing
 		 *
 		 * @param int $order_id
@@ -455,7 +466,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 				$charge   = $order->get_meta( '_authnet_charge_id' );
 				$captured = $order->get_meta( '_authnet_charge_captured' );
 
-				$gateway = new WC_Gateway_Authnet();
+				$gateway = $this->get_card_gateway();
 
 				if ( apply_filters( 'wc_authnet_capture_on_status_change', $gateway->capture_on_status_change, $order, $status_transition ) && $charge && $captured == 'no' ) {
 
@@ -576,7 +587,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 				$charge   = $order->get_meta( '_authnet_charge_id' );
 				$captured = $order->get_meta( '_authnet_charge_captured' );
 
-				$gateway = new WC_Gateway_Authnet();
+				$gateway = $this->get_card_gateway();
 
 				if ( apply_filters( 'wc_authnet_capture_on_status_change', $gateway->capture_on_status_change, $order, $status_transition ) && $charge && $captured == 'no' ) {
 
@@ -643,7 +654,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 
 				if ( $charge && $charge_captured != 'yes' ) {
 
-					$gateway = new WC_Gateway_Authnet();
+					$gateway = $this->get_card_gateway();
 
 					$gateway->log( "Info: Beginning cancel payment for order {$order_id} for the amount of {$order->get_total()}" );
 

@@ -727,8 +727,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 			$order->update_meta_data( '_authnet_charge_captured', 'no' );
 			$order->save();
 
-			$instance = new WC_Authnet();
-			$instance->cancel_payment( $order_id );
+			WC_Authnet::get_instance()->cancel_payment( $order_id );
 
 			$order       = wc_get_order( $order_id );
 			$void_status = $order->get_meta( '_authnet_void' );
