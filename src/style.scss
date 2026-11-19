@@ -17,3 +17,11 @@
 .wc-block-authnet-gateway-container input#cvc {
 	width:16% !important;
 }
+
+.wc-block-authnet__description {
+	margin-bottom: 16px;
+
+	p:last-child {
+		margin-bottom: 0;
+	}
+}
