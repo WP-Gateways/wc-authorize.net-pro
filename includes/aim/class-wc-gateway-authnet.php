@@ -38,7 +38,7 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 	public function __construct() {
 		$this->id                   = 'authnet';
 		$this->method_title         = __( 'Authorize.net', 'wc-authnet' );
-		$this->method_description   = sprintf( esc_html__( 'Live merchant accounts cannot be used in a sandbox environment, so to test the plugin, please make sure you are using a separate sandbox account. If you do not have a sandbox account, you can sign up for one from %shere%s.', 'wc-authnet' ), '<a href="https://developer.authorize.net/hello_world/sandbox.html" target="_blank">', '</a>' );
+		$this->method_description   = WC_Authnet::docs_link() . sprintf( esc_html__( 'Live merchant accounts cannot be used in a sandbox environment, so to test the plugin, please make sure you are using a separate sandbox account. If you do not have a sandbox account, you can sign up for one from %shere%s.', 'wc-authnet' ), '<a href="https://developer.authorize.net/hello_world/sandbox.html" target="_blank">', '</a>' );
 		$this->has_fields			= true;
 
 		$this->method_description .= '<h3>' . __( 'Upgrade to Enterprise', 'wc-authnet' ) . '</h3>' . sprintf( __( 'Enterprise version is a full blown plugin that provides support for <strong>processing subscriptions, pre-orders, one click upsells and payment via saved cards or bank accounts</strong>. Some of these functionalities require <strong>other premium plugins</strong> that are mentioned on the page linked below. No card details or other sensitive data is stored on your site.<br/><br/><a href="%s" target="_blank">Click here</a> to upgrade to Enterprise version or to know more about it.', 'wc-authnet' ), wc_authnet_fs()->get_upgrade_url() );

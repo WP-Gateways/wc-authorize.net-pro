@@ -44,6 +44,9 @@ WooCommerce is one of the oldest and most powerful e-commerce solutions for Word
 #### Extend, Contribute, Integrate
 Visit the [plugin page](https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/) for more details. Contributors are welcome to send pull requests via [GitHub repository](https://github.com/WP-Gateways/wc-authorize.net-pro).
 
+Setup steps and every setting are explained in the documentation:  
+https://docs.pledgedplugins.com/authorize-net/
+
 For custom payment gateway integration with your WordPress website, please [contact us here](https://wpgateways.com/support/custom-payment-gateway-integration/).
 
 #### Disclaimer

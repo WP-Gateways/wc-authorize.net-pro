@@ -79,6 +79,11 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 	class WC_Authnet {
 
 		/**
+		 * Customer documentation, linked from the Plugins screen and the gateway settings pages.
+		 */
+		const DOCS_URL = 'https://docs.pledgedplugins.com/authorize-net/';
+
+		/**
 		 * @var WC_Authnet Singleton The reference the *Singleton* instance of this class
 		 */
 		private static $instance;
@@ -138,10 +143,35 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 			add_action( 'admin_init', array( $this, 'check_environment' ) );
 			add_action( 'admin_notices', array( $this, 'admin_notices' ), 15 );
 			add_action( 'plugins_loaded', array( $this, 'init_environment' ) );
+			add_filter( 'plugin_row_meta', array( $this, 'plugin_row_meta' ), 10, 2 );
 			add_filter( 'wcapgp_processor_integration', array( __CLASS__, 'wallet_integration' ), 10, 3 );
 
 			wc_authnet_fs()->add_filter( 'templates/checkout.php', array( $this, 'checkout_notice' ) );
 			wc_authnet_fs()->add_filter( 'templates/pricing.php', array( $this, 'checkout_notice' ) );
+		}
+
+		/**
+		 * Add a Documentation link to the plugin's row on the Plugins screen.
+		 *
+		 * @param array  $links Row meta links.
+		 * @param string $file  Plugin file of the row.
+		 * @return array
+		 */
+		public function plugin_row_meta( $links, $file ) {
+			if ( plugin_basename( WC_AUTHNET_MAIN_FILE ) === $file ) {
+				$links[] = '<a href="' . esc_url( self::DOCS_URL ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Documentation', 'wc-authnet' ) . '</a>';
+			}
+			return $links;
+		}
+
+		/**
+		 * Docs link shown at the top of the gateway settings pages.
+		 *
+		 * @return string
+		 */
+		public static function docs_link() {
+			/* translators: 1: opening link tag, 2: closing link tag */
+			return '<p>' . sprintf( esc_html__( 'Setup steps and every setting are explained in the %1$sdocumentation%2$s.', 'wc-authnet' ), '<a href="' . esc_url( self::DOCS_URL ) . '" target="_blank" rel="noopener noreferrer">', '</a>' ) . '</p>';
 		}
 
 		/**
