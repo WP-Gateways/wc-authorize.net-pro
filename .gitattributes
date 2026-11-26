@@ -4,3 +4,4 @@
 /phpunit.xml export-ignore
 /jest.config.js export-ignore
 /cubic.yaml export-ignore
+/todo.md export-ignore
