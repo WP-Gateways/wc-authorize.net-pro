@@ -38,10 +38,9 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 	public function __construct() {
 		$this->id                   = 'authnet';
 		$this->method_title         = __( 'Authorize.net', 'wc-authnet' );
-		$this->method_description   = WC_Authnet::docs_link() . sprintf( esc_html__( 'Live merchant accounts cannot be used in a sandbox environment, so to test the plugin, please make sure you are using a separate sandbox account. If you do not have a sandbox account, you can sign up for one from %shere%s.', 'wc-authnet' ), '<a href="https://developer.authorize.net/hello_world/sandbox.html" target="_blank">', '</a>' );
+		$this->method_description   = $this->get_gateway_description();
 		$this->has_fields			= true;
 
-		$this->method_description .= '<h3>' . __( 'Upgrade to Enterprise', 'wc-authnet' ) . '</h3>' . sprintf( __( 'Enterprise version is a full blown plugin that provides support for <strong>processing subscriptions, pre-orders, one click upsells and payment via saved cards or bank accounts</strong>. Some of these functionalities require <strong>other premium plugins</strong> that are mentioned on the page linked below. No card details or other sensitive data is stored on your site.<br/><br/><a href="%s" target="_blank">Click here</a> to upgrade to Enterprise version or to know more about it.', 'wc-authnet' ), wc_authnet_fs()->get_upgrade_url() );
 		$this->supports             = array( 'products', 'refunds' );
 
 		// Load the form fields
@@ -76,6 +75,36 @@ class WC_Gateway_Authnet extends WC_Payment_Gateway_CC {
 		add_action( 'admin_notices', array( $this, 'admin_notices' ) );
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
+	}
+
+	/**
+	 * The settings page: the docs line above the description, and the sandbox note and upgrade pitch below it.
+	 */
+	public function admin_options() {
+		// The docs line and the notes are added only here: the Payments list shows the description as plain text,
+		// where they would run into it.
+		$description              = $this->method_description;
+		$this->method_description = WC_Authnet::docs_link() . $description . $this->get_settings_note();
+		parent::admin_options();
+		$this->method_description = $description;
+	}
+
+	/**
+	 * Plain-text summary of the gateway: its description in WooCommerce's Payments list and on the settings page.
+	 *
+	 * @return string
+	 */
+	public function get_gateway_description() {
+		return __( 'Customers pay by credit or debit card through Authorize.net, using its Legacy AIM API.', 'wc-authnet' );
+	}
+
+	/**
+	 * HTML shown below the description on the settings page only: how to test in the sandbox and the upgrade pitch.
+	 *
+	 * @return string
+	 */
+	protected function get_settings_note() {
+		return WC_Authnet::sandbox_note() . '<h3>' . __( 'Upgrade to Enterprise', 'wc-authnet' ) . '</h3><p>' . sprintf( __( 'Enterprise version is a full blown plugin that provides support for <strong>processing subscriptions, pre-orders, one click upsells and payment via saved cards or bank accounts</strong>. Some of these functionalities require <strong>other premium plugins</strong> that are mentioned on the page linked below. No card details or other sensitive data is stored on your site.<br/><br/><a href="%s" target="_blank">Click here</a> to upgrade to Enterprise version or to know more about it.', 'wc-authnet' ), wc_authnet_fs()->get_upgrade_url() ) . '</p>';
 	}
 
 	/**

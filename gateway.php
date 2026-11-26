@@ -151,7 +151,8 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 		}
 
 		/**
-		 * Add a Documentation link to the plugin's row on the Plugins screen.
+		 * Add Documentation and Support links to the plugin's row on the Plugins screen. They go here rather than
+		 * with Settings and About under the plugin name.
 		 *
 		 * @param array  $links Row meta links.
 		 * @param string $file  Plugin file of the row.
@@ -160,6 +161,7 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 		public function plugin_row_meta( $links, $file ) {
 			if ( plugin_basename( WC_AUTHNET_MAIN_FILE ) === $file ) {
 				$links[] = '<a href="' . esc_url( self::DOCS_URL ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Documentation', 'wc-authnet' ) . '</a>';
+				$links[] = '<a href="' . esc_url( wc_authnet_fs()->contact_url() ) . '">' . esc_html__( 'Support', 'wc-authnet' ) . '</a>';
 			}
 			return $links;
 		}
@@ -172,6 +174,15 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 		public static function docs_link() {
 			/* translators: 1: opening link tag, 2: closing link tag */
 			return '<p>' . sprintf( esc_html__( 'Setup steps and every setting are explained in the %1$sdocumentation%2$s.', 'wc-authnet' ), '<a href="' . esc_url( self::DOCS_URL ) . '" target="_blank" rel="noopener noreferrer">', '</a>' ) . '</p>';
+		}
+
+		/**
+		 * How to test in the sandbox, shown below the description on the gateway settings pages.
+		 *
+		 * @return string
+		 */
+		public static function sandbox_note() {
+			return '<p>' . sprintf( esc_html__( 'Live merchant accounts cannot be used in a sandbox environment, so to test the plugin, please make sure you are using a separate sandbox account. If you do not have a sandbox account, you can sign up for one from %shere%s.', 'wc-authnet' ), '<a href="https://developer.authorize.net/hello_world/sandbox.html" target="_blank">', '</a>' ) . '</p>';
 		}
 
 		/**
@@ -259,7 +270,6 @@ if ( function_exists( 'wc_authnet_fs' ) ) {
 		public function plugin_action_links( $links ) {
 			$plugin_links = array(
 				'<a href="' . esc_url( $this->settings_url() ) . '">' . __( 'Settings', 'wc-authnet' ) . '</a>',
-				'<a href="' . wc_authnet_fs()->contact_url() . '">' . __( 'Support', 'wc-authnet' ) . '</a>',
 				'<a href="' . admin_url( 'admin.php?page=authnet' ) . '">' . __( 'About', 'wc-authnet' ) . '</a>'
 			);
 
