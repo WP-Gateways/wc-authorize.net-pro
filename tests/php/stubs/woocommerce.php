@@ -54,11 +54,24 @@ if ( ! function_exists( 'is_wp_error' ) ) {
 
 abstract class WC_Payment_Gateway {
 
+	public $method_title = '';
+
+	public $method_description = '';
+
 	public $id = '';
 
 	public $supports = array();
 
 	public $settings = array();
+
+	// As WC_Payment_Gateway::admin_options() does: title, description, then the settings table.
+	public function admin_options() {
+		echo '<h2>' . $this->method_title . '</h2>' . $this->get_method_description() . '<table class="form-table"></table>';
+	}
+
+	public function get_method_description() {
+		return $this->method_description;
+	}
 
 	public function get_option( $key, $empty_value = null ) {
 		return $this->settings[ $key ] ?? $empty_value;

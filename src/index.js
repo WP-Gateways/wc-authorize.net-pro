@@ -2,7 +2,7 @@ import { registerPaymentMethod } from '@woocommerce/blocks-registry';
 import { __ } from '@wordpress/i18n';
 import { PaymentInputsWrapper, usePaymentInputs } from 'react-payment-inputs';
 import images from 'react-payment-inputs/images';
-import { useState } from '@wordpress/element';
+import { RawHTML, useState } from '@wordpress/element';
 import { getBlocksConfiguration } from './utils';
 import { usePaymentProcessing } from './payment-processing';
 import './style.scss';
@@ -104,8 +104,11 @@ const CreditCardComponent = ( {
 			</PaymentInputsWrapper>
 		</div>
 	)
+	const description = getBlocksConfiguration()?.description;
+
 	return (
 		<>
+			{ description && <RawHTML className="wc-block-authnet__description">{ description }</RawHTML> }
 			{ renderedCardElement }
 			{ PaymentMethodIcons && cardIcons.length > 0 && (
 				<PaymentMethodIcons icons={ cardIcons } align="left" />

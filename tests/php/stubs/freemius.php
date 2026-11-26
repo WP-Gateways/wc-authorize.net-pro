@@ -27,6 +27,10 @@ class WC_Authnet_Test_Freemius {
 		return true;
 	}
 
+	public function contact_url() {
+		return 'https://example.com/wp-admin/admin.php?page=authnet-contact';
+	}
+
 	public function get_upgrade_url() {
 		return 'https://example.com/upgrade';
 	}

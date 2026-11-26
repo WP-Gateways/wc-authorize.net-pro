@@ -42,7 +42,10 @@ WooCommerce is one of the oldest and most powerful e-commerce solutions for Word
 * [**WooCommerce**](https://woocommerce.com/)  version 7.6 or later, on WordPress 6.6 or later and PHP 7.2 or later.
 * A valid SSL certificate is required to ensure your customer credit card details are safe and make your site PCI DSS compliant. This plugin does not store the customer credit card numbers or sensitive information on your website.
 #### Extend, Contribute, Integrate
-Visit the [plugin page](https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/) for more details. Contributors are welcome to send pull requests via [Bitbucket repository](https://bitbucket.org/pledged/wc-authorize.net-pro/).
+Visit the [plugin page](https://pledgedplugins.com/products/authorize-net-payment-gateway-woocommerce/) for more details. Contributors are welcome to send pull requests via [GitHub repository](https://github.com/WP-Gateways/wc-authorize.net-pro).
+
+Setup steps and every setting are explained in the documentation:  
+https://docs.pledgedplugins.com/authorize-net/
 
 For custom payment gateway integration with your WordPress website, please [contact us here](https://wpgateways.com/support/custom-payment-gateway-integration/).
 
